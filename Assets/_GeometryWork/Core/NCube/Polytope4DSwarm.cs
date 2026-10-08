@@ -18,7 +18,7 @@ namespace PsychedelicLab.GeometryFX
     /// The 120-cell is the headline and it is *cheaper* than the Dekeract: 600 nodes plus 1,200
     /// edges is 3,000 particles at two per edge, against the Dekeract's 11,264.
     ///
-    /// Edges are never hand-written. Vertices come from coordinate orbits, then every pair is
+    /// Edges are never hand-written. Vertices come from <see cref="Polytope4DLibrary"/>, then every pair is
     /// measured once at build time, the shortest distance is taken as the edge length, and any
     /// pair within tolerance of it becomes an edge. 600 vertices is 180,000 pairs — trivial, once.
     /// That one routine gives the whole table for free.
@@ -104,193 +104,15 @@ namespace PsychedelicLab.GeometryFX
 
         // ---- vertex sets -----------------------------------------------------
 
-        /// <summary>The vertex set for a polytope, so other systems can reuse one definition.</summary>
+        /// <summary>
+        /// The vertex set for a polytope, so other systems can reuse one definition. Delegates to
+        /// <see cref="Polytope4DLibrary"/>, whose orbits flip the sign of every coordinate — the
+        /// version that used to live here flipped only three, which left the 600-cell with 84 of
+        /// its 120 vertices and 60 of its 720 edges.
+        /// </summary>
         public static Vector4[] VerticesFor(Polytope p) => Vertices(p);
 
-        static Vector4[] Vertices(Polytope p)
-        {
-            switch (p)
-            {
-                case Polytope.Cell5: return Cell5();
-                case Polytope.Cell8: return Cell8();
-                case Polytope.Cell16: return Cell16();
-                case Polytope.Cell24: return Cell24();
-                case Polytope.Cell600: return Cell600();
-                default: return Cell120();
-            }
-        }
-
-        /// <summary>5 vertices: the 4-simplex, as 5 of the 5-cube's corners in a symmetric frame.</summary>
-        static Vector4[] Cell5() => new[]
-        {
-            new Vector4( 1,  1,  1, -1 / Mathf.Sqrt(5)),
-            new Vector4( 1, -1, -1, -1 / Mathf.Sqrt(5)),
-            new Vector4(-1,  1, -1, -1 / Mathf.Sqrt(5)),
-            new Vector4(-1, -1,  1, -1 / Mathf.Sqrt(5)),
-            new Vector4( 0,  0,  0,  4 / Mathf.Sqrt(5)),
-        };
-
-        /// <summary>16 vertices: every sign combination of (+/-1, +/-1, +/-1, +/-1).</summary>
-        static Vector4[] Cell8()
-        {
-            var list = new List<Vector4>(16);
-            for (int m = 0; m < 16; m++)
-                list.Add(new Vector4(
-                    (m & 1) == 0 ? -1 : 1, (m & 2) == 0 ? -1 : 1,
-                    (m & 4) == 0 ? -1 : 1, (m & 8) == 0 ? -1 : 1));
-            return list.ToArray();
-        }
-
-        /// <summary>8 vertices: the four axes, both signs.</summary>
-        static Vector4[] Cell16() => new[]
-        {
-            new Vector4( 1, 0, 0, 0), new Vector4(-1, 0, 0, 0),
-            new Vector4(0,  1, 0, 0), new Vector4(0, -1, 0, 0),
-            new Vector4(0, 0,  1, 0), new Vector4(0, 0, -1, 0),
-            new Vector4(0, 0, 0,  1), new Vector4(0, 0, 0, -1),
-        };
-
-        /// <summary>24 vertices: all permutations of (+/-1, +/-1, 0, 0).</summary>
-        static Vector4[] Cell24()
-        {
-            var list = new List<Vector4>(24);
-            int[,] pairs = { { 0, 1 }, { 0, 2 }, { 0, 3 }, { 1, 2 }, { 1, 3 }, { 2, 3 } };
-            for (int k = 0; k < 6; k++)
-                for (int s = 0; s < 4; s++)
-                {
-                    var v = Vector4.zero;
-                    v[pairs[k, 0]] = (s & 1) == 0 ? -1 : 1;
-                    v[pairs[k, 1]] = (s & 2) == 0 ? -1 : 1;
-                    list.Add(v);
-                }
-            return list.ToArray();
-        }
-
-        /// <summary>
-        /// 120 vertices of the 600-cell: the 24-cell's 24, plus 96 from even permutations of
-        /// (+/-phi, +/-1, +/-1/phi, 0) / 2.
-        /// </summary>
-        static Vector4[] Cell600()
-        {
-            float phi = (1f + Mathf.Sqrt(5f)) * .5f;
-            var list = new List<Vector4>(120);
-            foreach (var v in Cell24()) list.Add(v);
-
-            float[] magnitudes = { phi, 1f, 1f / phi, 0f };
-            foreach (var perm in EvenPermutations())
-                for (int s = 0; s < 8; s++)
-                {
-                    var v = new Vector4(
-                        magnitudes[perm[0]] * ((s & 1) == 0 ? -1 : 1),
-                        magnitudes[perm[1]] * ((s & 2) == 0 ? -1 : 1),
-                        magnitudes[perm[2]] * ((s & 4) == 0 ? -1 : 1),
-                        magnitudes[perm[3]]);
-                    AddUnique(list, v * .5f);
-                }
-            return list.ToArray();
-        }
-
-        /// <summary>
-        /// 600 vertices of the 120-cell. Built from its standard coordinate orbits: sign changes
-        /// of golden-ratio tuples, plus even permutations of the longer orbits.
-        /// </summary>
-        static Vector4[] Cell120()
-        {
-            float phi = (1f + Mathf.Sqrt(5f)) * .5f;
-            float r5 = Mathf.Sqrt(5f);
-            float ip = 1f / phi;      // phi - 1
-            float ip2 = ip * ip;      // 2 - phi
-            float p2 = phi * phi;     // phi + 1
-
-            var list = new List<Vector4>(600);
-
-            // Orbits that take all permutations.
-            AllPermutations(list, 0f, 0f, 2f, 2f);
-            AllPermutations(list, 1f, 1f, 1f, r5);
-            AllPermutations(list, ip2, phi, phi, phi);
-            AllPermutations(list, ip, ip, ip, p2);
-
-            // Orbits that take only even permutations.
-            EvenPermutations(list, 0f, ip2, 1f, p2);
-            EvenPermutations(list, 0f, ip, phi, r5);
-            EvenPermutations(list, ip, 1f, phi, 2f);
-
-            return list.ToArray();
-        }
-
-        // ---- permutation helpers --------------------------------------------
-
-        static readonly int[][] AllPerm = BuildPermutations(false);
-        static readonly int[][] EvenPerm = BuildPermutations(true);
-
-        static int[][] EvenPermutations() => EvenPerm;
-
-        static int[][] BuildPermutations(bool evenOnly)
-        {
-            var result = new List<int[]>();
-            int[] p = { 0, 1, 2, 3 };
-            Permute(p, 0, result, evenOnly);
-            return result.ToArray();
-        }
-
-        static void Permute(int[] p, int k, List<int[]> into, bool evenOnly)
-        {
-            if (k == p.Length)
-            {
-                if (!evenOnly || Parity(p) == 0) into.Add((int[])p.Clone());
-                return;
-            }
-            for (int i = k; i < p.Length; i++)
-            {
-                (p[k], p[i]) = (p[i], p[k]);
-                Permute(p, k + 1, into, evenOnly);
-                (p[k], p[i]) = (p[i], p[k]);
-            }
-        }
-
-        /// <summary>0 for an even permutation, 1 for odd.</summary>
-        static int Parity(int[] p)
-        {
-            int swaps = 0;
-            var q = (int[])p.Clone();
-            for (int i = 0; i < q.Length; i++)
-                while (q[i] != i)
-                {
-                    int j = q[i];
-                    (q[i], q[j]) = (q[j], q[i]);
-                    swaps++;
-                }
-            return swaps & 1;
-        }
-
-        static void AllPermutations(List<Vector4> into, float a, float b, float c, float d) =>
-            Orbit(into, AllPerm, a, b, c, d);
-
-        static void EvenPermutations(List<Vector4> into, float a, float b, float c, float d) =>
-            Orbit(into, EvenPerm, a, b, c, d);
-
-        static void Orbit(List<Vector4> into, int[][] perms, float a, float b, float c, float d)
-        {
-            float[] m = { a, b, c, d };
-            foreach (var perm in perms)
-                for (int s = 0; s < 16; s++)
-                {
-                    var v = new Vector4(
-                        m[perm[0]] * ((s & 1) == 0 ? -1 : 1),
-                        m[perm[1]] * ((s & 2) == 0 ? -1 : 1),
-                        m[perm[2]] * ((s & 4) == 0 ? -1 : 1),
-                        m[perm[3]] * ((s & 8) == 0 ? -1 : 1));
-                    AddUnique(into, v);
-                }
-        }
-
-        /// <summary>Sign flips on a zero component duplicate, so the orbits need deduplicating.</summary>
-        static void AddUnique(List<Vector4> into, Vector4 v)
-        {
-            for (int i = 0; i < into.Count; i++)
-                if ((into[i] - v).sqrMagnitude < 1e-6f) return;
-            into.Add(v);
-        }
+        static Vector4[] Vertices(Polytope p) => Polytope4DLibrary.Vertices((RegularPolytope4D)(int)p);
 
         // ---- per-frame -------------------------------------------------------
 
@@ -302,28 +124,20 @@ namespace PsychedelicLab.GeometryFX
 
             var shared = useSharedAxis ? Hyperspace4DAxis.Current : null;
 
+            // One SO(4) rotor per frame: the four plane rates are one bivector, exponentiated
+            // together rather than applied as a chain of plane turns, so the motion is a true
+            // geodesic and does not depend on an arbitrary plane order.
+            float t = time * tau;
+            var rotor = Rotor4.FromBivector(simpleRates.x * t, mixedRates.x * t, 0f,
+                                            0f, mixedRates.y * t, simpleRates.y * t);
+
             for (int i = 0; i < count; i++)
             {
                 Vector4 v = vertices4D[i];
                 if (shared) { into[i] = shared.RotateAndProject(v) * radius; continue; }
-                float x = v.x, y = v.y, z = v.z, w = v.w;
-
-                Rotate(ref x, ref y, simpleRates.x * time * tau);
-                Rotate(ref z, ref w, simpleRates.y * time * tau);
-                Rotate(ref x, ref z, mixedRates.x * time * tau);
-                Rotate(ref y, ref w, mixedRates.y * time * tau);
-
-                into[i] = Project(x, y, z, w) * radius;
+                Vector4 r = rotor.Rotate(v);
+                into[i] = Project(r.x, r.y, r.z, r.w) * radius;
             }
-        }
-
-        static void Rotate(ref float p, ref float q, float angle)
-        {
-            if (angle == 0f) return;
-            float c = Mathf.Cos(angle), s = Mathf.Sin(angle);
-            float p0 = p, q0 = q;
-            p = p0 * c - q0 * s;
-            q = p0 * s + q0 * c;
         }
 
         Vector3 Project(float x, float y, float z, float w)
