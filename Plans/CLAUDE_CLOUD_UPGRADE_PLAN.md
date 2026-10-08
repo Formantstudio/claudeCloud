@@ -153,10 +153,28 @@ Implement the missing mathematical systems detailed in `GEOMETRY-MAP.md` and `Ge
 
 ## Execution Checklist for Claude Cloud
 
-- [ ] **Step 1:** Audit all existing scripts in `Assets/_GeometryWork/Core/`, `Assets/_EscherWorldManagement/`, and `Assets/polyhedronGenerator/`.
-- [ ] **Step 2:** Implement Phase 1 missing manifolds (Hopf fibration, RK4 strange attractors, Seifert surfaces, Morin surface).
-- [ ] **Step 3:** Implement Phase 2 Dual Contouring and unify Escher screw dislocation across all TPMS fields.
-- [ ] **Step 4:** Implement Phase 3 $SO(4)$ double rotation algebra and complete regular 4-polytope suite.
-- [ ] **Step 5:** Enhance barycentric wire shaders with quad diagonal suppression and anti-aliasing.
-- [ ] **Step 6:** Create `.asmdef` files and write automated math verification tests.
-- [ ] **Step 7:** Document all public APIs and compile the final deliverable.
+Status after the first cloud session. Details, API and test list: `Assets/_GeometryWork/Engine/README.md`.
+
+- [x] **Step 1:** Audit all existing scripts in `Assets/_GeometryWork/Core/`, `Assets/_EscherWorldManagement/`, and `Assets/polyhedronGenerator/`.
+  Found and fixed: the 600-cell built 84 of its 120 vertices (sign flips on three coordinates only);
+  the Escher screw dislocation used period 2π/f where the fields repeat every 2/f, tearing the seam.
+  Calabi–Yau (§1.5) was already implemented. Pure files (`IWireGeometry`, `ImplicitShapes`) moved into
+  the engine assembly with GUIDs kept.
+- [ ] **Step 2:** Implement Phase 1 missing manifolds — **Hopf fibration, RK4 strange attractors (fixed and
+  adaptive) and Seifert surfaces done**; **Morin surface / eversion still open**: it must be sourced, not
+  written from memory (GEOMETRY-MAP §4), and the sources were unreachable from the session.
+- [x] **Step 3:** Phase 2 Dual Contouring (`DualContouring`, `DualContourEngine`) and one screw dislocation
+  (`ScrewDislocation`) for `Implicits` and `EscherFields`, seamless on all six TPMS. *§2.3 GPU extraction not started.*
+- [x] **Step 4:** Phase 3 `Rotor4` SO(4) algebra (used by `Polytope4DSwarm` and, as the default
+  `RotationModel.Bivector`, by `Hyperspace4DAxis` / `Hyper4DField`) and the verified `Polytope4DLibrary`.
+  `NCubeSwarmBase` keeps its Givens chain on purpose: the quaternion-pair form exists only in 4-D.
+  *§3.3 Conway pipeline not started.*
+- [x] **Step 5:** New standalone `GeometryEngine/Wire` shader: screen-space AA, `_ShowDiagonals`, depth fade,
+  dual-tone gradient, lattice pulse. Mesh-side diagonal suppression is `WireMeshBuilder.hideQuadDiagonals`.
+  Existing chamber shaders unchanged.
+- [x] **Step 6:** `GeometryEngine.Runtime` / `.Editor` / `.Tests` asmdefs (scoped to `_GeometryWork/Engine`,
+  since `Core/` still needs studio packages) and 70 NUnit tests: Euler characteristic, orientability,
+  NaN/pole safety, outward normals, plus the math itself. Runnable without Unity:
+  `dotnet test Tools/EngineTests/Tests`.
+- [x] **Step 7:** Public APIs documented in `Assets/_GeometryWork/Engine/README.md` and XML docs;
+  GEOMETRY-MAP updated. Not yet rendered in the Unity Editor.

@@ -44,12 +44,12 @@ intact). The two editor path constants were repointed.
 
 | File | Role |
 | --- | --- |
-| `IWireGeometry.cs` | The one interface a chamber exposes so a particle swarm can ride it: `IsBuilt`, `GridU`, `GridV`, `SampleGrid(u,v)`. Every chamber implements it, so new shapes get particles with no new code |
+| `IWireGeometry.cs` | **Moved to `Engine/Core/`** (GUID kept). The one interface a chamber exposes so a particle swarm can ride it: `IsBuilt`, `GridU`, `GridV`, `SampleGrid(u,v)`. Every chamber implements it, so new shapes get particles with no new code |
 | `ManifoldSurfaces.cs` | 30 parametric surfaces as one `ManifoldSurface` enum plus `ManifoldSettings`. Also `Manifolds.CalabiYau` (Fermat quintic slice, n² patches) and the wrap/pole classification the mesh builder needs |
 | `AccordionSettings.cs` | The fractal accordion's parameters, plus `RingProfiles` (circle, polygon, superellipse, star, gear) |
 | `RingFractal.cs` | Real recursions: `CantorPosition` (IFS ring spacing — clusters of clusters), `KochRadius` (triangle-wave series, sharp enough that the recursion reads), `ApollonianScale` / `SubdivideGap` |
 | `RingGeometry.cs` | The accordion ring tunnel as a reusable builder, shared by the chamber and the combo |
-| `ImplicitShapes.cs` | 13 implicit fields: gyroid, Schwarz P/D, Neovius, Lidinoid, Split-P, **Barth sextic**, Mandelbulb DE, **Mandelbox**, Menger, Sierpinski, torus, Goursat. Flags which are true signed distances and which merely tile |
+| `ImplicitShapes.cs` | **Moved to `Engine/Implicit/`** (GUID kept), now with the screw dislocation. 13 implicit fields: gyroid, Schwarz P/D, Neovius, Lidinoid, Split-P, **Barth sextic**, Mandelbulb DE, **Mandelbox**, Menger, Sierpinski, torus, Goursat. Flags which are true signed distances and which merely tile |
 
 ### Chambers — mesh + barycentric wire
 
@@ -72,7 +72,7 @@ with the shared bridge.
 | `NCubeSwarmBase.cs` | n-cube topology (2^n vertices, n·2^(n-1) edges) and the n-D → 3-D perspective chain |
 | `TesseractSwarm` … `DekeractSwarm` | One script per dimension, 4 through 10 |
 | `MetatronCubeSwarm.cs` | 13 nodes, all 78 lines (C(13,2) = 78). The flat glyph is the cuboctahedron plus centre viewed down a 3-fold axis, so `flatten` is one dial from Vector Equilibrium to glyph. Length-class filter reveals the solids inside |
-| `Polytope4DSwarm.cs` | All six regular 4-polytopes including the **120-cell** (600 vertices, 1200 edges). Edges derived by shortest pairwise distance, never hand-written |
+| `Polytope4DSwarm.cs` | All six regular 4-polytopes including the **120-cell** (600 vertices, 1200 edges). Edges derived by shortest pairwise distance, never hand-written. Vertices now come from `Engine/Polytopes/Polytope4DLibrary` (the old 600-cell orbit was wrong, see §3) and rotation is one `Rotor4` per frame |
 | `PolyhedronSwarm.cs` | Bridges polyhedronGenerator: Platonics, prisms, antiprisms, all 92 Johnson solids via `MeshBuilder.edges()` |
 | `WireParticleSwarm.cs` | The swarm that rides any `IWireGeometry`, so every chamber and every future shape gets the particle layer |
 
@@ -134,6 +134,31 @@ glow and sparsity can be tuned without disturbing the others. All wire materials
 
 ---
 
+## 2a. `_GeometryWork/Engine/` — the standalone engine
+
+Its own assembly (`GeometryEngine.Runtime`, UnityEngine only), so it compiles without Curved World
+or the control rig. Full API in `Engine/README.md`; summary:
+
+| File | Role |
+| --- | --- |
+| `Mesh/WireMeshBuilder.cs` | The wire invariants in one place: unwelded quads, bary in UV1, +1 diagonal lift, UInt32, 200-unit bounds |
+| `Mesh/TopologyReport.cs` | Welded V/E/F, χ, boundary loops, orientability, components, NaNs — the self-check every test and component uses |
+| `Math/Rotor4.cs` | SO(4) as a left/right quaternion pair; all six plane angles at once as one bivector |
+| `Polytopes/Polytope4DLibrary.cs` | The six regular 4-polytopes with vertices, edges and 2-faces, verified |
+| `Curves/CurveSweep.cs` | Rotation-minimising frames with holonomy correction; tubes and ribbons |
+| `Manifolds/HopfFibration.cs` + `Components/HopfFibrationEngine.cs` | Hopf fibers as linked tubes and a particle bundle |
+| `Manifolds/StrangeAttractors.cs` + `Components/AttractorEngine.cs` | Lorenz, Rössler, Thomas, Halvorsen, Aizawa (RK4, fixed or adaptive) and Clifford / De Jong maps |
+| `Manifolds/SeifertSurface.cs` + `Components/SeifertSurfaceBuilder.cs` | Seifert's algorithm on closed braids |
+| `Implicit/ScrewDislocation.cs` | The Escher step, shared by `Implicits` and `EscherFields` |
+| `Implicit/DualContouring.cs` + `Components/DualContourEngine.cs` | QEF dual contouring; keeps the corners surface nets rounds off |
+| `Shaders/GeometryEngineWire.shader` | `GeometryEngine/Wire`: standalone URP wire with depth fade, gradient, pulse, diagonal toggle |
+| `Tests/Editor/` | 70 NUnit tests; also runnable without Unity via `dotnet test Tools/EngineTests/Tests` |
+
+`Hyperspace4DAxis` gained `RotationModel.Bivector` (default), which rotates through `Rotor4`;
+`SequentialPlanes` keeps the old Givens chain.
+
+---
+
 ## 3. Facts worth not rediscovering
 
 - **`Cull Off` + opaque is why self-intersecting immersions work.** Klein bottle, Roman surface and
@@ -159,6 +184,14 @@ glow and sparsity can be tuned without disturbing the others. All wire materials
   inside the domain. The map stays continuous but needs the epsilon guard or it emits NaNs.
 - **TPMS fields are level sets, not distances.** The gradient magnitude varies, so marching normals
   and particle stick distances come out uneven unless normalised by |∇f|.
+- **Orbits need sign changes on all four coordinates.** The 600-cell orbit once flipped only
+  three, so any even permutation that moved the zero off `w` never negated the fourth coordinate:
+  84 vertices and 60 edges instead of 120 and 720, silently.
+- **A screw dislocation's period is the field's period in the coordinates being sheared.** Fields
+  evaluated at π·frequency·p repeat every 2/frequency, not 2π/frequency; with the wrong one the
+  staircase tears at the atan2 seam. Whole-number dislocations only.
+- **(L, R) and (−L, −R) are the same 4-D rotation; (L, −R) is not.** Sign-align the pair, never
+  one half, before slerping rotors.
 - **`TunnelSparkleWire 1.mat` is a hand-tuned working material** assigned as the chamber's
   `chamberMaterial` in `ProceduralTunnelTester-2`. Not a stray duplicate — do not delete it.
 
@@ -166,19 +199,22 @@ glow and sparsity can be tuned without disturbing the others. All wire materials
 
 ## 4. Still not built
 
-| Shape | Needs |
+| Shape | Status / needs |
 | --- | --- |
-| Hopf fibration | Curve bundle: a swarm source, or swept tubes through the chamber |
-| Attractors (Thomas, Halvorsen, Lorenz) | Per-particle RK4 with fixed sub-steps, a new swarm sampling mode |
-| Seifert surfaces | The ribbon sweep (built) plus Seifert's algorithm assembly |
-| Morin surface / sphere eversion | Parameterisation must be sourced against reference images, not written from memory |
+| Hopf fibration | **Built** — `Engine/Components/HopfFibrationEngine` |
+| Attractors (Thomas, Halvorsen, Lorenz, …) | **Built** — `Engine/Components/AttractorEngine` (CPU, cached trajectory; a per-particle GPU integrator is still open) |
+| Seifert surfaces | **Built** — `Engine/Components/SeifertSurfaceBuilder`, on closed braids |
+| Morin surface / sphere eversion | Parameterisation must be sourced against reference images, not written from memory. Still open: sources were unreachable from the cloud session |
 | Mandelbox **rooms** (camera inside) | A raymarcher. `ImplicitShapes.Mandelbox` already provides the DE |
 | Penrose steps | `GitRepoKeijiro/Portals` is the honest route — a staircase whose top flight is a portal to the bottom closes the loop from any angle |
 | Mandelbrot / Julia imagery | A compute shader to a RenderTexture, feeding `ParticleTexture` or the wire tint |
+| GPU implicit extraction | Plan §2.3: compute-shader surface nets / marching cubes |
+| Conway operator pipeline | Plan §3.3: refactor `polyhedronGenerator/scripts/operators` |
 
 ## 5. Unverified
 
-Nothing in §2 has rendered in the Editor yet. The parameterisations come from standard
+The engine's math (§2a) is unit-tested (70 tests, runnable without Unity), but nothing in §2 or §2a
+has rendered in the Editor yet. The parameterisations come from standard
 formulations; the failure modes listed in §3 are the known ones, not observed ones. The only
 measured numbers anywhere here are the original chamber's 12 × 48 grid and the Dekeract's 11,264
 particles.

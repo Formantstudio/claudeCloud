@@ -11,6 +11,8 @@ This repository isolates the pure procedural geometry, mathematical manifolds, i
 ```
 ├── Assets/
 │   ├── _GeometryWork/          # Primary geometry engines, shapes, shaders, materials
+│   │   ├── Engine/             # Standalone engine assembly (UnityEngine only): SO(4) rotors,
+│   │   │                       #   4-polytopes, Hopf, attractors, Seifert, dual contouring, tests
 │   │   ├── Core/               # Chamber engines, manifolds, implicit fields, swarms
 │   │   │   ├── NCube/          # 4D-10D hypercubes, 120-cell, Metatron, projections
 │   │   │   └── Editor/         # Inspector tools and scene scaffolding
@@ -23,6 +25,7 @@ This repository isolates the pure procedural geometry, mathematical manifolds, i
 │   │   └── CurvedWorld/        # Curved world bridge & automation
 │   ├── polyhedronGenerator/    # Platonic, Archimedean, Johnson solids & Conway operators
 │   └── PsychedelicLab/Warp/    # CPU fractal voxel meshing (Menger, Sierpinski, Mandelbulb)
+├── Tools/EngineTests/          # Runs the engine's NUnit tests under plain .NET (no Unity needed)
 └── Plans/                      # Specifications, math roadmaps, and execution checklists
     ├── CLAUDE_CLOUD_UPGRADE_PLAN.md   # MASTER EXECUTION PLAN FOR THIS CLOUD SESSION
     ├── GEOMETRY-MAP.md                # Full inventory of existing geometry assets
@@ -54,4 +57,10 @@ This repository isolates the pure procedural geometry, mathematical manifolds, i
 
 ## How to Run This Cloud Session
 
-Open `Plans/CLAUDE_CLOUD_UPGRADE_PLAN.md` and follow the phased execution roadmap.
+Open `Plans/CLAUDE_CLOUD_UPGRADE_PLAN.md` and follow the phased execution roadmap. Its checklist
+records what is done; `Assets/_GeometryWork/Engine/README.md` documents the engine API.
+
+## Testing
+
+- In Unity: Test Runner ▸ EditMode ▸ `GeometryEngine.Tests`.
+- Without Unity (.NET 8 SDK): `dotnet test Tools/EngineTests/Tests`.
