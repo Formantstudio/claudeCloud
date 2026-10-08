@@ -53,7 +53,7 @@ namespace PsychedelicLab.GeometryFX
             var t = new TopologyReport();
             int n = positions.Count;
             var map = new int[n];
-            var cells = new Dictionary<long, List<int>>();
+            var cells = new Dictionary<long, List<int>>(LongMix.Instance);
             var welded = new List<Vector3>();
             float inv = 1f / Mathf.Max(weld, 1e-9f);
 
@@ -84,7 +84,7 @@ namespace PsychedelicLab.GeometryFX
             t.vertices = welded.Count;
 
             // Directed edge counts: key (a,b) with a<b, value = (uses, sum of directions).
-            var edgeUse = new Dictionary<long, Vector2Int>();
+            var edgeUse = new Dictionary<long, Vector2Int>(LongMix.Instance);
             var used = new bool[welded.Count];
             var parent = new int[welded.Count];
             for (int i = 0; i < parent.Length; i++) parent[i] = i;
@@ -163,6 +163,23 @@ namespace PsychedelicLab.GeometryFX
         {
             if (!g.TryGetValue(a, out var l)) g[a] = l = new List<int>();
             l.Add(b);
+        }
+
+        /// <summary>
+        /// long's own hash is lo ^ hi, which collides badly for edge keys (lo, lo + 1) and turned a
+        /// 300k-vertex measurement from milliseconds into seconds. SplitMix64 finaliser instead.
+        /// </summary>
+        sealed class LongMix : IEqualityComparer<long>
+        {
+            public static readonly LongMix Instance = new LongMix();
+            public bool Equals(long a, long b) => a == b;
+            public int GetHashCode(long k)
+            {
+                ulong z = (ulong)k + 0x9E3779B97F4A7C15UL;
+                z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+                z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+                return (int)(z ^ (z >> 31));
+            }
         }
 
         static int Find(int[] p, int i) { while (p[i] != i) { p[i] = p[p[i]]; i = p[i]; } return i; }
