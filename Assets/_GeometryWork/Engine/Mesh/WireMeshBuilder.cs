@@ -69,6 +69,50 @@ namespace PsychedelicLab.GeometryFX
             for (int k = 0; k < 6; k++) triangles.Add(i + k);
         }
 
+        /// <summary>
+        /// One polygon, counter-clockwise seen from the front. A triangle is emitted as is; anything
+        /// larger as a fan about its centroid in which only the polygon's own edges draw: each fan
+        /// triangle (centre, p_i, p_i+1) keeps the bary component of the centre at 0 along p_i–p_i+1 and
+        /// lifts the other two by 1, so the spokes never draw — c = (1, 1, 1), p_i = (0, 2, 1),
+        /// p_i+1 = (0, 1, 2). The spokes are interior to the face, so they stay hidden whatever
+        /// <see cref="hideQuadDiagonals"/> says. UV0 puts the polygon on the unit disk.
+        /// </summary>
+        public void Polygon(IList<Vector3> points)
+        {
+            int n = points.Count;
+            if (n < 3) return;
+            if (n == 3)
+            {
+                Triangle(points[0], points[1], points[2], Disk(0, 3), Disk(1, 3), Disk(2, 3));
+                return;
+            }
+            Vector3 c = Vector3.zero, normal = Vector3.zero;
+            for (int i = 0; i < n; i++)
+            {
+                Vector3 a = points[i], b = points[(i + 1) % n];
+                c += a;
+                normal += Vector3.Cross(a, b);
+            }
+            c /= n;
+            float m = normal.magnitude;
+            normal = m > 1e-12f ? normal / m : Vector3.zero;
+            var centreUV = new Vector2(.5f, .5f);
+            for (int i = 0; i < n; i++)
+            {
+                int k = vertices.Count;
+                Add(c, normal, new Vector3(1, 1, 1), centreUV);
+                Add(points[i], normal, new Vector3(0, 2, 1), Disk(i, n));
+                Add(points[(i + 1) % n], normal, new Vector3(0, 1, 2), Disk(i + 1, n));
+                triangles.Add(k); triangles.Add(k + 1); triangles.Add(k + 2);
+            }
+        }
+
+        static Vector2 Disk(int i, int n)
+        {
+            float a = i * Mathf.PI * 2f / n;
+            return new Vector2(.5f + .5f * Mathf.Cos(a), .5f + .5f * Mathf.Sin(a));
+        }
+
         /// <summary>Quad with a plain unit-square UV.</summary>
         public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d) =>
             Quad(a, b, c, d, new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1));

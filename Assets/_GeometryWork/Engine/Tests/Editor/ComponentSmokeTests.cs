@@ -35,6 +35,18 @@ namespace PsychedelicLab.GeometryFX.Tests
         [Test] public void AttractorMapDust() => Check<AttractorEngine>(c => { c.system = Attractor.DeJong; c.trajectoryPoints = 2000; c.visiblePoints = 2000; });
         [Test] public void Seifert() => Check<SeifertSurfaceBuilder>(c => c.UseT34());
         [Test] public void DualContourMenger() => Check<DualContourEngine>(c => { c.resolution = 24; c.UseMenger(); });
+        [Test] public void ConwaySoccerBall() => Check<ConwayPolyhedronEngine>(c => c.UseSoccerBall());
+        [Test] public void ConwaySnubDodecahedron() => Check<ConwayPolyhedronEngine>(c => c.UseSnubDodecahedron());
+        [Test] public void ConwayBadNotationBuildsNothingButStaysFinite()
+        {
+            var go = new GameObject("conway bad");
+            var c = go.AddComponent<ConwayPolyhedronEngine>();
+            c.notation = "xyz";
+            c.Rebuild();
+            StringAssert.Contains("Notation error", c.Status);
+            Assert.AreEqual(Vector3.zero, c.SampleGrid(.3f, .5f));
+            Object.DestroyImmediate(go);
+        }
         [Test] public void DualContourGyroidStair() => Check<DualContourEngine>(c => { c.resolution = 24; c.UseGyroidStair(); });
     }
 }

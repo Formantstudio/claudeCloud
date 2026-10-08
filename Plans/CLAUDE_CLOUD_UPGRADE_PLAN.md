@@ -168,7 +168,7 @@ Status after the first cloud session. Details, API and test list: `Assets/_Geome
 - [x] **Step 4:** Phase 3 `Rotor4` SO(4) algebra (used by `Polytope4DSwarm` and, as the default
   `RotationModel.Bivector`, by `Hyperspace4DAxis` / `Hyper4DField`) and the verified `Polytope4DLibrary`.
   `NCubeSwarmBase` keeps its Givens chain on purpose: the quaternion-pair form exists only in 4-D.
-  *§3.3 Conway pipeline not started.*
+  *§3.3 done in pass 3: `Engine/Polyhedra` (Conway seeds, d a k g c w q r + t j e o s b m n, notation parser, Hart canonical form) and `ConwayPolyhedronEngine`; see Plans/PASS-3-PLAN.md P4.*
 - [x] **Step 5:** New standalone `GeometryEngine/Wire` shader: screen-space AA, `_ShowDiagonals`, depth fade,
   dual-tone gradient, lattice pulse. Mesh-side diagonal suppression is `WireMeshBuilder.hideQuadDiagonals`.
   Existing chamber shaders unchanged.

@@ -25,6 +25,9 @@ namespace PsychedelicLab.GeometryFX.Editor
         [MenuItem("GameObject/Geometry Engine/Dual Contour Surface", false, 13)]
         static void DualContour(MenuCommand c) => Create<DualContourEngine>("Dual Contour Surface", c);
 
+        [MenuItem("GameObject/Geometry Engine/Conway Polyhedron", false, 14)]
+        static void ConwayPolyhedron(MenuCommand c) => Create<ConwayPolyhedronEngine>("Conway Polyhedron", c);
+
         static void Create<T>(string name, MenuCommand command) where T : WireMeshComponent
         {
             var go = new GameObject(name);

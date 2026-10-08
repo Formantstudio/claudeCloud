@@ -96,16 +96,31 @@ What did not hold, now fixed:
 
 ## P4 · Conway operator pipeline (plan §3.3)
 
-- [ ] **4.1 Polygon mesh core** (`Engine/Polyhedra`): vertices + oriented faces, edge map, validation.
-- [ ] **4.2 Seeds:** T C O D I and prism / antiprism / pyramid families.
-- [ ] **4.3 Primitive operators:** dual, ambo, kis, gyro, chamfer, whirl, quinto; derived truncate
+- [x] **4.1 Polygon mesh core** (`Engine/Polyhedra`): vertices + oriented faces, edge map, validation.
+- [x] **4.2 Seeds:** T C O D I and prism / antiprism / pyramid families.
+- [x] **4.3 Primitive operators:** dual, ambo, kis, gyro, chamfer, whirl, quinto; derived truncate
       (dkd), join (da), expand (aa), ortho (de), snub (dgd), bevel (ta), meta (kj), needle (kd).
-- [ ] **4.4 Notation parser:** strings such as `tI`, `dkdC`, `gaD`, applied right to left.
-- [ ] **4.5 Canonicalisation** (Hart): planarise faces and make edges tangent to the unit sphere.
-- [ ] **4.6 Tests:** V/E/F for named polyhedra (truncated icosahedron 60/90/32, snub cube 24/60/38, …),
+- [x] **4.4 Notation parser:** strings such as `tI`, `dkdC`, `gaD`, applied right to left.
+- [x] **4.5 Canonicalisation** (Hart): planarise faces and make edges tangent to the unit sphere.
+- [x] **4.6 Tests:** V/E/F for named polyhedra (truncated icosahedron 60/90/32, snub cube 24/60/38, …),
       χ = 2, manifold, oriented, planarity improvement from canonicalisation.
-- [ ] **4.7 Wire output:** `WireMeshBuilder.Polygon` fans that hide every interior diagonal, and a
+- [x] **4.7 Wire output:** `WireMeshBuilder.Polygon` fans that hide every interior diagonal, and a
       `ConwayPolyhedronEngine` component.
+
+**P4 result.** `Engine/Polyhedra`: `Polyhedron` (oriented face loops, edge map, CCW vertex rings,
+`Validate`, Newell normals, planarity, `Emit`) and `Conway` (seeds, the eight primitives written
+directly on the loops so orientation is preserved by construction, the eight derived operators, a
+right-to-left parser with kn / tn, a face budget, and canonicalisation). `WireMeshBuilder.Polygon`
+draws a face as a centroid fan whose spokes never draw. `ConwayPolyhedronEngine` is the component
+(menu: GameObject ▸ Geometry Engine ▸ Conway Polyhedron); particles ride its edges.
+
+Canonicalisation is relaxation (centre the tangent points, move edges to the unit sphere, planarise).
+Two findings: relaxing a finished snub from operator positions wanders off (sC stalled at 0.047), so
+`Canonicalize` falls back to relaxing the dual and reciprocating; and the snub dodecahedron needs a
+canonical start for every step, so `Parse(..., canonicalIterations)` canonicalises between primitive
+steps. Tests (EngineTests, 166 total): V/E/F for 37 notations including all 13 Archimedean solids,
+validity, outward winding, χ = 2 of the wire output, face shapes, uniform edges for the canonical
+Archimedean solids (sC and sD included), tangency and planarity, bad notation, the face budget.
 
 ## P5 · Performance, round 2
 
