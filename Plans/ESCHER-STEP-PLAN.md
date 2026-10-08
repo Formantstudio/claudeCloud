@@ -276,7 +276,12 @@ lattice periods), applied identically by the engine's implicit fields and the ro
 The 4-D room fields were also corrected: at W = 0 the rooms' Gyroid, Schwarz P and Neovius were not
 those surfaces (P was the level −1 surface, Neovius shifted by 3, and the 4-D gyroid was not a gyroid
 at any W). Their fourth-dimension terms now vanish at W = 0, on the CPU and in `EscherField4D.hlsl`.
-The GPU path supports the dislocation only; the other warps are CPU-side for now.
+The GPU path supports the dislocation only; the other warps are CPU-side for now. *(Pass 3: no
+longer true — `EscherField4D.hlsl` now has the inversion, Droste and scroll warps and the seamless
+dislocation core, `EscherFieldGpu.Pack` writes its uniforms, and a C# transcription of the shader is
+tested against the CPU rooms for every field and warp. The same check found the shader missing the
+Mandelbulb, hard-coding the Mandelbox, Barth, Menger and Sierpinski parameters, ignoring W influence,
+and taking pow() of negative numbers in Goursat; all fixed. The HLSL compiles under glslang.)*
 
 On §7's per-frame question: extraction now runs on worker threads. A 64³ gyroid with a dislocation
 re-extracts in about 80 ms (surface nets) or 180 ms (dual contouring) on four cores, against 143 and

@@ -406,6 +406,8 @@ namespace UnityEngine
         public void DisableKeyword(string k) { }
         public void SetFloat(string n, float v) { }
         public void SetVector(string n, Vector4 v) { }
+        public void SetVector(int id, Vector4 v) { }
+        public void SetFloat(int id, float v) { }
         public void SetColor(string n, Color c) { }
     }
     public class Shader : Object

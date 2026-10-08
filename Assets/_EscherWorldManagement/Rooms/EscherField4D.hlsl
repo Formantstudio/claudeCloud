@@ -10,15 +10,28 @@
 // render texture per portal, which is the difference between 2-3 cameras and a dozen.
 
 // ---- parameters, fed per portal ------------------------------------------------
+// Packed by EscherFieldGpu.Pack (C#), which is the one place that knows this layout.
 // _EscherField   : x = field id, y = level, z = thickness, w = frequency
-// _EscherStep    : x = dislocation, y = axis (0 X, 1 Y, 2 Z), z = core, w = unused
+// _EscherStep    : x = dislocation, y = axis (0 X, 1 Y, 2 Z), z = core, w = W influence
 // _EscherSlice   : xyz = W-plane turns (XW, YW, ZW), w = W offset of this slice
 // _EscherMarch   : x = max steps, y = max distance, z = step relaxation, w = surface epsilon
+// _EscherShape   : x = Barth W, y = Mandelbulb power, z = iterations, w = folds
+// _EscherBox     : x = Mandelbox scale, y = min radius, z = fixed radius, w = unused
+// _EscherInvert  : xyz = inversion centre, w = radius (0 = off)
+// _EscherDroste  : x = scale (0 = off), y = sectors, z = twist, w = reference radius
+// _EscherDroste2 : x = axis (0 X, 1 Y, 2 Z), y = core radius, zw = unused
+// _EscherScroll  : xyz = lattice offset in periods, already wrapped to [0, 1), w = unused
 
 float4 _EscherField;
 float4 _EscherStep;
 float4 _EscherSlice;
 float4 _EscherMarch;
+float4 _EscherShape;
+float4 _EscherBox;
+float4 _EscherInvert;
+float4 _EscherDroste;
+float4 _EscherDroste2;
+float4 _EscherScroll;
 
 // ---- field ids (match RoomField) -----------------------------------------------
 #define ESCHER_GYROID    0
@@ -43,36 +56,95 @@ void EscherRot(inout float a, inout float b, float turns)
     b = a0 * s + b0 * c;
 }
 
-// Screw dislocation: shearing the field along its own axis by the azimuth means one circuit
-// advances the lattice by `dislocation` periods. The core is eased because a dislocation is
-// singular on its own axis, where every azimuth meets at once.
-float3 EscherDislocate(float3 p)
+float3 EscherToAxis(float3 p, int axis)
 {
-    float amount = _EscherStep.x;
-    if (abs(amount) < 1e-5) return p;
+    return axis == 0 ? float3(p.y, p.z, p.x) : axis == 1 ? float3(p.z, p.x, p.y) : p;
+}
 
-    int axis = (int)(_EscherStep.y + 0.5);
-    float3 q = axis == 0 ? float3(p.y, p.z, p.x)
-             : axis == 1 ? float3(p.z, p.x, p.y)
-             : p;
+float3 EscherFromAxis(float3 q, int axis)
+{
+    return axis == 0 ? float3(q.z, q.x, q.y) : axis == 1 ? float3(q.y, q.z, q.x) : q;
+}
 
-    float radius = length(q.xy);
-    float core = max(_EscherStep.z, 0.01);
-    float ease = smoothstep(0.0, 1.0, min(radius / core, 1.0));
+// The lattice repeats every 2 / frequency: the periodic fields are evaluated at pi * frequency * p.
+float EscherPeriod()
+{
+    return 2.0 / max(_EscherField.w, 0.001);
+}
 
-    if (ease > 0.0)
+// ---- Escher space: window point -> lattice sample ------------------------------
+// Mirrors EscherSpace.Map / Evaluate (C#) step for step: sphere inversion, then either the Droste
+// spiral (carrying the dislocation inside its coordinates) or the screw dislocation, then the
+// scroll. Every jump these make is a whole number of lattice periods, so the field cannot see it.
+
+struct EscherLattice
+{
+    float3 position;   // where the field is sampled
+    float3 plain;      // the unsheared sample, blended in inside the dislocation core
+    float weight;      // 1 = use `position` only
+};
+
+float3 EscherInvert(float3 p)
+{
+    float r = _EscherInvert.w;
+    if (r <= 0.0) return p;
+    float3 d = p - _EscherInvert.xyz;
+    float m = max(dot(d, d), 1e-12);   // the centre is the image of infinity
+    return _EscherInvert.xyz + d * (r * r / m);
+}
+
+// Log-cylindrical coordinates about the Droste axis: exactly invariant under scaling by the Droste
+// scale, and with a whole-number twist one turn also steps one scale level (Escher's spiral).
+float3 EscherDroste(float3 p, float period, float dislocation)
+{
+    float3 q = EscherToAxis(p, (int)(_EscherDroste2.x + 0.5));
+    float rho = max(length(q.xy), max(_EscherDroste2.y, 1e-6));
+    float turns = atan2(q.y, q.x) / 6.2831853;
+    float levels = log(rho / max(_EscherDroste.w, 1e-4)) / log(max(_EscherDroste.x, 1.0001));
+    float n = max(_EscherDroste.y, 1.0);
+    return float3(period * (levels + _EscherDroste.z * turns),
+                  period * n * turns,
+                  period * (n * q.z / (6.2831853 * rho) + dislocation * turns));
+}
+
+EscherLattice EscherMap(float3 p)
+{
+    float period = EscherPeriod();
+    float dislocation = _EscherStep.x;
+    p = EscherInvert(p);
+
+    EscherLattice l;
+    l.weight = 1.0;
+    if (_EscherDroste.x > 0.0)
     {
-        float azimuth = atan2(q.y, q.x);
-        // The field is evaluated at pi * frequency * p, so its lattice repeats every 2 / frequency.
-        // (This was 2pi / frequency, pi times too far per circuit, which tore the seam; it now
-        // matches EscherSpace / ScrewDislocation on the CPU.)
-        float period = 2.0 / max(_EscherField.w, 0.01);
-        q.z += amount * period * (azimuth / 6.2831853) * ease;
+        l.position = EscherDroste(p, period, dislocation);
+        l.plain = l.position;
+    }
+    else if (dislocation != 0.0)
+    {
+        // Screw dislocation: one circuit of the axis advances the lattice by `dislocation`
+        // periods. The core blends the plain and sheared fields (see EscherField) instead of
+        // easing the shear, which used to leave a crack along the cut inside the core.
+        int axis = (int)(_EscherStep.y + 0.5);
+        float3 q = EscherToAxis(p, axis);
+        float radius = length(q.xy);
+        l.plain = p;
+        q.z += dislocation * period * (atan2(q.y, q.x) / 6.2831853);
+        l.position = EscherFromAxis(q, axis);
+        l.weight = radius <= 0.0 ? 0.0
+                 : smoothstep(0.0, 1.0, min(radius / max(_EscherStep.z, 1e-4), 1.0));
+    }
+    else
+    {
+        l.position = p;
+        l.plain = p;
     }
 
-    return axis == 0 ? float3(q.z, q.x, q.y)
-         : axis == 1 ? float3(q.y, q.z, q.x)
-         : q;
+    // Scroll last, in lattice coordinates, wrapped on the CPU: the loop is exact and never drifts.
+    float3 offset = _EscherScroll.xyz * period;
+    l.position += offset;
+    l.plain += offset;
+    return l;
 }
 
 float EscherBox(float3 p, float3 b)
@@ -140,27 +212,31 @@ float EscherRaw(float3 p, float w)
         const float phi = 1.6180339887;
         float3 r = p * 1.8;
         float x2 = r.x * r.x, y2 = r.y * r.y, z2 = r.z * r.z;
-        float p2 = phi * phi;
+        float p2 = phi * phi, w2 = _EscherShape.x * _EscherShape.x;
         float a = p2 * x2 - y2, b = p2 * y2 - z2, c = p2 * z2 - x2;
-        float rr = x2 + y2 + z2 - 1.0;
-        float v = 4.0 * a * b * c - (1.0 + 2.0 * phi) * rr * rr;
+        float rr = x2 + y2 + z2 - w2;
+        float v = 4.0 * a * b * c - (1.0 + 2.0 * phi) * rr * rr * w2;
         return sign(v) * pow(abs(v), 0.25);
     }
 
     if (id == ESCHER_GOURSAT)
     {
+        // x^4 by multiplication: HLSL pow(x, y) is exp2(y * log2(x)), NaN for negative x on most
+        // GPUs, which used to drop every point with a negative coordinate.
         float3 r = p * 1.5;
-        float r2 = dot(r, r);
-        return pow(r.x, 4) + pow(r.y, 4) + pow(r.z, 4) - 1.5 * r2 * r2 + 1.0;
+        float3 sq = r * r;
+        float r2 = sq.x + sq.y + sq.z;
+        return dot(sq, sq) - 1.5 * r2 * r2 + 1.0;
     }
 
     if (id == ESCHER_MANDELBOX)
     {
         float3 c = p * 3.0, z = c;
         float dr = 1.0;
-        const float scale = -1.75, minR2 = 0.25, fixR2 = 1.0;
+        float scale = _EscherBox.x, minR2 = _EscherBox.y * _EscherBox.y, fixR2 = _EscherBox.z * _EscherBox.z;
+        int iterations = (int)clamp(_EscherShape.z, 2.0, 20.0);
         [loop]
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < iterations; i++)
         {
             z = clamp(z, -1.0, 1.0) * 2.0 - z;
             float m = dot(z, z);
@@ -172,14 +248,38 @@ float EscherRaw(float3 p, float w)
         return length(z) / max(abs(dr), 1e-6);
     }
 
+    // Escape time turned into a distance estimate by the running derivative: 0.5 log(r) r / dr.
+    if (id == ESCHER_MANDELBULB)
+    {
+        float3 c = p * 1.3, z = c;
+        float dr = 1.0, r = 0.0, power = _EscherShape.y;
+        int iterations = (int)clamp(_EscherShape.z, 2.0, 20.0);
+        [loop]
+        for (int i = 0; i < iterations; i++)
+        {
+            r = length(z);
+            if (r > 2.2) break;
+            float theta = acos(clamp(z.z / max(r, 1e-6), -1.0, 1.0));
+            float phi = atan2(z.y, z.x);
+            dr = pow(r, power - 1.0) * power * dr + 1.0;
+            float zr = pow(r, power);
+            theta *= power; phi *= power;
+            z = zr * float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)) + c;
+        }
+        return r < 1e-5 ? -1.0 : 0.5 * log(max(r, 1.0001)) * r / max(dr, 1e-6);
+    }
+
     if (id == ESCHER_MENGER)
     {
         float3 r = p * 1.1;
         float d = EscherBox(r, 1.0);
         float scale = 1.0;
+        int depth = (int)clamp(_EscherShape.w, 1.0, 6.0);
         [loop]
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < depth; i++)
         {
+            // fmod of |x| rather than a floor-based repeat: the two differ only by the sign of a,
+            // and only |a| is used.
             float3 a = fmod(abs(r * scale), 2.0) - 1.0;
             scale *= 3.0;
             float3 c = 1.0 - 3.0 * abs(a);
@@ -192,34 +292,48 @@ float EscherRaw(float3 p, float w)
     {
         float3 z = p * 1.4;
         const float scale = 2.0;
+        int depth = (int)clamp(_EscherShape.w, 1.0, 6.0);
         [loop]
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < depth; i++)
         {
             if (z.x + z.y < 0.0) z.xy = -z.yx;
             if (z.x + z.z < 0.0) z.xz = -z.zx;
             if (z.y + z.z < 0.0) z.yz = -z.zy;
             z = z * scale - (scale - 1.0);
         }
-        return length(z) * pow(scale, -5.0) - 0.02;
+        return length(z) * pow(scale, -(float)depth) - 0.02;
     }
 
     // Gyroid, 4-D: W is a phase on the closing term, so W = 0 is exactly the gyroid.
     return sin(q.x) * cos(q.y) + sin(q.y) * cos(q.z) + sin(q.z) * cos(q.x + qw);
 }
 
-// Field value on this portal's slice. The slice turn is applied to the 4-D point before
-// evaluating, which is what makes one portal show a different room from the next.
+// The raw field at a lattice point on this portal's slice. The slice turn is applied to the 4-D
+// point before evaluating, which is what makes one portal show a different room from the next.
+// W participates scaled by its influence; at 0 the field is its plain 3-D form and the slice turn
+// is skipped, as on the CPU.
+float EscherSliced(float3 p, float w)
+{
+    float wEff = w * _EscherStep.w;
+    if (_EscherStep.w > 0.0)
+    {
+        float3 turns = _EscherSlice.xyz;
+        EscherRot(p.x, wEff, turns.x);
+        EscherRot(p.y, wEff, turns.y);
+        EscherRot(p.z, wEff, turns.z);
+    }
+    return EscherRaw(p, wEff);
+}
+
+// Field value at a window point on slice `w`: the Escher space map, the field (blended with the
+// plain field inside the dislocation core, so the cut never cracks), then level and thickness.
+// Mirrors EscherFields.Sample.
 float EscherField(float3 p, float w)
 {
-    p = EscherDislocate(p);
-
-    float3 turns = _EscherSlice.xyz;
-    float wEff = w;
-    EscherRot(p.x, wEff, turns.x);
-    EscherRot(p.y, wEff, turns.y);
-    EscherRot(p.z, wEff, turns.z);
-
-    float v = EscherRaw(p, wEff) - _EscherField.y;
+    EscherLattice l = EscherMap(p);
+    float v = EscherSliced(l.position, w);
+    if (l.weight < 1.0) v = lerp(EscherSliced(l.plain, w), v, l.weight);
+    v -= _EscherField.y;
     float thickness = _EscherField.z;
     if (thickness > 0.0) v = abs(v) - thickness;
     return v;

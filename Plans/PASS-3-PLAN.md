@@ -153,8 +153,19 @@ unsuppressed, our code raises no warnings (only two unused events in the studio 
 
 ## P7 · GPU parity
 
-- [ ] **7.1** Port `EscherSpace` (inversion, Droste, scroll) to `EscherField4D.hlsl` and its uniform
+- [x] **7.1** Port `EscherSpace` (inversion, Droste, scroll) to `EscherField4D.hlsl` and its uniform
       publisher, so portal shaders and CPU rooms agree. Reviewed, not compiled (no HLSL compiler here).
+
+**P7 result.** Better than planned: `glslang-tools` installs here and `glslangValidator -D` compiles
+HLSL, so the shader is compiled (a CoreTests case runs it when installed). `EscherField4D.hlsl` now
+mirrors `EscherSpace.Map / Evaluate`: inversion, Droste with the staircase folded in, the screw with
+the field-level core blend (the old point-eased core cracked), and the scroll, wrapped on the CPU.
+`EscherFieldGpu.Pack` is the one writer of the uniform layout. A line-for-line C# transcription of
+the shader is checked against `EscherFields.Sample` for all 12 fields × 6 warp combinations (and a
+mutation of the packing is caught). That check exposed five older GPU faults, all fixed: no
+Mandelbulb (id 9 fell through to the gyroid); Mandelbox scale, radii and iterations hard-coded;
+Barth's W and the Menger / Sierpinski depth hard-coded; W influence ignored; Goursat's
+pow(negative, 4), NaN on most GPUs.
 
 ## P8 · Morin surface
 
