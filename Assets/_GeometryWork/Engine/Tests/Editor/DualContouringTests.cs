@@ -96,6 +96,63 @@ namespace PsychedelicLab.GeometryFX.Tests
         }
 
         [Test]
+        public void FullCubenessIsVoxelMasonryWithTheSameTopology()
+        {
+            var g = new Gyroid { s = new ImplicitSettings { shape = ImplicitShape.Gyroid, frequency = 1.5f } };
+            var smooth = new WireMeshBuilder();
+            new DualContouring { resolution = 20, extent = 1f }.Extract(g, smooth);
+            var dc = new DualContouring { resolution = 20, extent = 1f, cubeness = 1f };
+            var blocks = new WireMeshBuilder();
+            dc.Extract(g, blocks);
+
+            Assert.AreEqual(smooth.VertexCount, blocks.VertexCount, "same quads at every cubeness");
+            var a = TopologyReport.Measure(smooth, 1e-6f); var b = TopologyReport.Measure(blocks, 1e-6f);
+            Assert.AreEqual(a.EulerCharacteristic, b.EulerCharacteristic);
+            Assert.AreEqual(a.boundaryLoops, b.boundaryLoops);
+
+            float step = dc.Step;
+            foreach (var v in blocks.vertices)
+                for (int k = 0; k < 3; k++)
+                {
+                    // Cell centres sit at -1 + (i + 1/2) * step on every axis.
+                    float f = (v[k] + 1f) / step - .5f;
+                    Assert.AreEqual(Mathf.Round(f), f, 1e-3f, "vertex off its cell centre: " + v);
+                }
+            for (int i = 0; i < blocks.vertices.Count; i += 6)
+            {
+                // Every quad is an axis-aligned face: its four corners share one coordinate.
+                Vector3 p0 = blocks.vertices[i], p1 = blocks.vertices[i + 1], p2 = blocks.vertices[i + 2], p3 = blocks.vertices[i + 5];
+                bool aligned = false;
+                for (int k = 0; k < 3; k++)
+                    aligned |= Mathf.Abs(p0[k] - p1[k]) < 1e-4f && Mathf.Abs(p0[k] - p2[k]) < 1e-4f && Mathf.Abs(p0[k] - p3[k]) < 1e-4f;
+                Assert.IsTrue(aligned, "quad " + i / 6 + " is not a voxel face");
+            }
+        }
+
+        [Test]
+        public void HalfCubenessIsHalfway()
+        {
+            var g = new Gyroid { s = new ImplicitSettings { shape = ImplicitShape.Gyroid, frequency = 1.5f } };
+            var a = new WireMeshBuilder(); var b = new WireMeshBuilder(); var c = new WireMeshBuilder();
+            new DualContouring { resolution = 16, extent = 1f }.Extract(g, a);
+            new DualContouring { resolution = 16, extent = 1f, cubeness = .5f }.Extract(g, b);
+            new DualContouring { resolution = 16, extent = 1f, cubeness = 1f }.Extract(g, c);
+            for (int i = 0; i < a.VertexCount; i++)
+                Assert.Less((b.vertices[i] - (a.vertices[i] + c.vertices[i]) * .5f).magnitude, 1e-5f);
+        }
+
+        [Test]
+        public void ThreadedExtractionIsIdenticalToSerial()
+        {
+            var g = new Gyroid { s = new ImplicitSettings { shape = ImplicitShape.Gyroid, frequency = 2f, dislocation = 1f } };
+            var serial = new WireMeshBuilder(); var threaded = new WireMeshBuilder();
+            new DualContouring { resolution = 32, extent = 1f, parallel = false }.Extract(g, serial);
+            new DualContouring { resolution = 32, extent = 1f, parallel = true }.Extract(g, threaded);
+            Assert.AreEqual(serial.VertexCount, threaded.VertexCount);
+            for (int i = 0; i < serial.VertexCount; i++) Assert.AreEqual(serial.vertices[i], threaded.vertices[i]);
+        }
+
+        [Test]
         public void PseudoInverseSolvesFullRankAndIgnoresNullDirections()
         {
             var a = new double[3, 3]; var v = new double[3, 3];

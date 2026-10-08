@@ -29,6 +29,10 @@ namespace PsychedelicLab.GeometryFX
         [Min(.01f)] public float extent = 2f;
         [Tooltip("QEF eigenvalue cut-off, relative to the largest. Lower is sharper but noisier.")]
         [Range(.001f, .5f)] public float singularThreshold = .05f;
+        [Tooltip("Stone ↔ flesh: 1 snaps every vertex to its cell centre — voxel masonry with the same topology, so it crossfades continuously.")]
+        [Range(0, 1)] public float cubeness;
+        [Tooltip("Sample and solve on worker threads. Output is identical; off only for profiling.")]
+        public bool multithreaded = true;
 
         [Header("Motion")]
         [Tooltip("Seconds between re-extractions while animating.")]
@@ -53,6 +57,8 @@ namespace PsychedelicLab.GeometryFX
             extractor.extent = Mathf.Max(extent, .01f);
             extractor.singularThreshold = singularThreshold;
             extractor.solveQef = method == Method.DualContouring;
+            extractor.cubeness = cubeness;
+            extractor.parallel = multithreaded;
 
             float saved = field.level;
             if (animate && levelDrift > 0f && time > 0f) field.level = saved + Mathf.Sin(time * .35f) * levelDrift;
@@ -64,7 +70,7 @@ namespace PsychedelicLab.GeometryFX
         }
 
         protected override string Describe() =>
-            field.shape + " · " + method + " " + extractor.resolution + "³ · " + extractor.ActiveCells.ToString("N0") +
+            field.shape + " · " + method + (cubeness > 0f ? " · cubeness " + cubeness.ToString("0.##") : "") + " " + extractor.resolution + "³ · " + extractor.ActiveCells.ToString("N0") +
             " cells" + (extractor.solveQef ? ", " + extractor.ClampedVertices + " clamped, " + extractor.ProjectedVertices + " projected" : "") +
             (field.dislocation != 0f ? " · screw " + field.dislocation.ToString("0.##") : "");
 
