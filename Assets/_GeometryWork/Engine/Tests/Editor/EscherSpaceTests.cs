@@ -97,6 +97,55 @@ namespace PsychedelicLab.GeometryFX.Tests
             }
         }
 
+        /// <summary>Largest field jump across the window's atan2 cut (negative x, y = ±ε) over a range of radii.</summary>
+        static float WindowSeam(ImplicitSettings s, float rMin, float rMax)
+        {
+            float worst = 0f;
+            for (int i = 0; i < 80; i++)
+            {
+                float r = Mathf.Lerp(rMin, rMax, i / 79f), z = -.6f + i * .015f;
+                worst = Mathf.Max(worst, Mathf.Abs(Implicits.Field(s, new Vector3(-r, 1e-6f, z), 0f) -
+                                                   Implicits.Field(s, new Vector3(-r, -1e-6f, z), 0f)));
+            }
+            return worst;
+        }
+
+        [Test]
+        public void DislocationIsSeamlessInsideItsCoreToo()
+        {
+            // Easing the shear by the core weight left a crack along the cut inside the core: the
+            // jump there was ease * periods, not a whole number. The core now blends fields instead.
+            foreach (var shape in Tpms)
+            {
+                var s = new ImplicitSettings { shape = shape, frequency = 2f, dislocation = 1f, dislocationAxis = Axis3.Z, dislocationCore = .4f };
+                Assert.Less(WindowSeam(s, .01f, .39f), 5e-3f, shape + " cracks inside the core");
+            }
+        }
+
+        [Test]
+        public void DrosteWithAStaircaseStaysSeamlessAndSelfSimilar()
+        {
+            foreach (int d in new[] { 1, -1, 2 })
+            {
+                var s = Droste(ImplicitShape.Gyroid, 1, 6);
+                s.dislocation = d;
+                Assert.Less(WindowSeam(s, .1f, .9f), 5e-3f, "seam with dislocation " + d);
+                for (int i = 0; i < 30; i++)
+                {
+                    var p = new Vector3(.25f + .01f * i, -.15f + .011f * i, .04f * Mathf.Cos(i));
+                    Assert.AreEqual(Implicits.Field(s, p, 0f), Implicits.Field(s, p * 4f, 0f), 2e-3f, "scale invariance with dislocation " + d);
+                }
+            }
+        }
+
+        [Test]
+        public void InversionWithAStaircaseStaysSeamless()
+        {
+            var s = new ImplicitSettings { shape = ImplicitShape.Gyroid, frequency = 2f, dislocation = 1f, dislocationAxis = Axis3.Z, dislocationCore = .1f,
+                                           space = new EscherSpace { invert = true, inversionRadius = .6f } };
+            Assert.Less(WindowSeam(s, .1f, .9f), 5e-3f);
+        }
+
         [Test]
         public void InactiveSpaceIsIdentity()
         {

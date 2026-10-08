@@ -76,10 +76,32 @@ namespace PsychedelicLab.GeometryFX
         {
             // The Escher warps go first (EscherSpace: inversion, Droste, screw dislocation, scroll),
             // with the lattice's true period — the TPMS are evaluated at π·frequency·p, so they
-            // repeat every 2 / frequency — which is what keeps every seam invisible.
+            // repeat every 2 / frequency — which is what keeps every seam invisible. Inside the
+            // dislocation core the plain and sheared fields are blended, so there is no crack.
+            float v;
             if (s.dislocation != 0f || (s.space != null && s.space.Active))
-                p = EscherSpace.ToLattice(s.space, p, ScrewDislocation.TpmsPeriod(s.frequency), time,
-                                          s.dislocationAxis, s.dislocation, s.dislocationCore);
+            {
+                var lattice = EscherSpace.Map(s.space, p, ScrewDislocation.TpmsPeriod(s.frequency), time,
+                                              s.dislocationAxis, s.dislocation, s.dislocationCore);
+                v = EscherSpace.Evaluate(new RawField { settings = s }, lattice);
+            }
+            else v = Raw(s, p);
+
+            v -= s.level;
+            // A thickened level set: the wall around the surface instead of the surface itself.
+            if (s.thickness > 0f) v = Mathf.Abs(v) - s.thickness;
+            return v;
+        }
+
+        struct RawField : EscherSpace.IRawField
+        {
+            public ImplicitSettings settings;
+            public float Raw(Vector3 lattice) => Implicits.Raw(settings, lattice);
+        }
+
+        /// <summary>The shape's own field at a lattice point, before warps, level and thickness.</summary>
+        public static float Raw(ImplicitSettings s, Vector3 p)
+        {
             float v;
             switch (s.shape)
             {
@@ -263,9 +285,6 @@ namespace PsychedelicLab.GeometryFX
                 }
             }
 
-            v -= s.level;
-            // A thickened level set: the wall around the surface instead of the surface itself.
-            if (s.thickness > 0f) v = Mathf.Abs(v) - s.thickness;
             return v;
         }
 

@@ -18,7 +18,10 @@ namespace PsychedelicLab.GeometryFX
     ///    exactly invariant under scaling by s, so rooms nest inside rooms forever toward the axis;
     ///    with a whole-number twist one turn about the axis also steps one scale level, which is
     ///    Escher's spiral. Whole-number sectors n and twist keep the θ = ±π seam invisible.
-    /// 3. **Screw dislocation** (<see cref="ScrewDislocation"/>): one floor per turn.
+    /// 3. **Screw dislocation** (<see cref="ScrewDislocation"/>): one floor per turn. Its core blends
+    ///    the plain and sheared fields (<see cref="Lattice.weight"/>) rather than easing the shear, so
+    ///    there is no crack along the cut near the axis. With Droste on, it is folded into the Droste
+    ///    coordinates instead (see <see cref="Map"/>).
     /// 4. **Scroll**: the lattice slides through the window by <see cref="scroll"/> +
     ///    <see cref="scrollVelocity"/>·time periods, wrapped to one period. Because it is applied last,
     ///    in lattice coordinates, the field is periodic in it whatever came before, so the loop is
@@ -83,18 +86,65 @@ namespace PsychedelicLab.GeometryFX
         }
 
         /// <summary>
-        /// Window point → lattice point, for a field whose lattice repeats every
-        /// <paramref name="period"/> along each axis. <paramref name="space"/> may be null.
+        /// Where a window point samples the lattice. A field takes <c>f(point)</c>; where
+        /// <see cref="weight"/> is below 1 (inside the screw dislocation's core) it takes
+        /// <c>lerp(f(plain), f(point), weight)</c> instead. Use <see cref="Evaluate{TField}"/>.
         /// </summary>
-        public static Vector3 ToLattice(EscherSpace space, Vector3 p, float period, float time,
-                                        Axis3 dislocationAxis, float dislocation, float dislocationCore)
+        public struct Lattice
+        {
+            public Vector3 point;
+            public Vector3 plain;
+            public float weight;
+        }
+
+        /// <summary>A field evaluated at a lattice point (the raw field, before level and thickness).</summary>
+        public interface IRawField
+        {
+            float Raw(Vector3 lattice);
+        }
+
+        /// <summary>
+        /// Window point → lattice sample, for a field whose lattice repeats every
+        /// <paramref name="period"/> along each axis. <paramref name="space"/> may be null.
+        ///
+        /// With the Droste spiral on, the screw dislocation is carried inside the Droste coordinates
+        /// (height += dislocation periods per turn, about the Droste axis). A separate screw applied
+        /// after Droste cannot be seamless, because Droste relies on the lattice repeating and a
+        /// screw only repeats along its own axis; folded in, both the seam and the scale invariance
+        /// stay exact.
+        /// </summary>
+        public static Lattice Map(EscherSpace space, Vector3 p, float period, float time,
+                                  Axis3 dislocationAxis, float dislocation, float dislocationCore)
         {
             if (space != null && space.invert) p = Invert(p, space.inversionCentre, space.inversionRadius);
-            if (space != null && space.droste) p = Droste(space, p, period);
-            if (dislocation != 0f) p = ScrewDislocation.Apply(p, dislocationAxis, dislocation, period, dislocationCore);
+            var l = new Lattice { weight = 1f };
+            if (space != null && space.droste)
+            {
+                l.point = Droste(space, p, period, dislocation);
+                l.plain = l.point;
+            }
+            else if (dislocation != 0f)
+            {
+                l.plain = p;
+                l.point = ScrewDislocation.Shear(p, dislocationAxis, dislocation, period);
+                l.weight = ScrewDislocation.CoreWeight(p, dislocationAxis, dislocationCore);
+            }
+            else l.point = l.plain = p;
+
             if (space != null && (space.scroll != Vector3.zero || space.scrollVelocity != Vector3.zero))
-                p += Wrapped(space.scroll + space.scrollVelocity * time) * period;
-            return p;
+            {
+                Vector3 offset = Wrapped(space.scroll + space.scrollVelocity * time) * period;
+                l.point += offset;
+                l.plain += offset;
+            }
+            return l;
+        }
+
+        /// <summary>The raw field at a window point, with the dislocation core blended.</summary>
+        public static float Evaluate<TField>(TField field, in Lattice l) where TField : IRawField
+        {
+            float v = field.Raw(l.point);
+            return l.weight >= 1f ? v : Mathf.LerpUnclamped(field.Raw(l.plain), v, l.weight);
         }
 
         /// <summary>Sphere inversion: an involution, conformal, fixing the sphere itself.</summary>
@@ -107,8 +157,11 @@ namespace PsychedelicLab.GeometryFX
             return centre + d * (radius * radius / m);
         }
 
-        /// <summary>The Droste map alone (see the class summary for the formula).</summary>
-        public static Vector3 Droste(EscherSpace s, Vector3 p, float period)
+        /// <summary>
+        /// The Droste map (see the class summary), with <paramref name="dislocation"/> lattice periods
+        /// of height gained per turn about the Droste axis.
+        /// </summary>
+        public static Vector3 Droste(EscherSpace s, Vector3 p, float period, float dislocation = 0f)
         {
             Vector3 q = ScrewDislocation.ToAxis(p, s.drosteAxis);
             float rho = Mathf.Max(Mathf.Sqrt(q.x * q.x + q.y * q.y), Mathf.Max(s.drosteCore, 1e-6f));
@@ -118,7 +171,7 @@ namespace PsychedelicLab.GeometryFX
             var lattice = new Vector3(
                 period * (levels + s.drosteTwist * turns),
                 period * n * turns,
-                period * n * q.z / (Mathf.PI * 2f * rho));
+                period * (n * q.z / (Mathf.PI * 2f * rho) + dislocation * turns));
             return lattice;
         }
 

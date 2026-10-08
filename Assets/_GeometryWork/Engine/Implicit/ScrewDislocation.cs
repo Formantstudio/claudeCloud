@@ -23,6 +23,38 @@ namespace PsychedelicLab.GeometryFX
     /// </summary>
     public static class ScrewDislocation
     {
+        /// <summary>
+        /// The full shear, with no core: z += dislocation · period · atan2(y, x) / 2π about the axis.
+        /// Across the cut the shift jumps by exactly <c>dislocation</c> periods, so a periodic field
+        /// sampled through it is seamless everywhere except on the axis itself.
+        /// </summary>
+        public static Vector3 Shear(Vector3 p, Axis3 axis, float dislocation, float period)
+        {
+            if (dislocation == 0f) return p;
+            Vector3 q = ToAxis(p, axis);
+            q.z += dislocation * period * (Mathf.Atan2(q.y, q.x) / (Mathf.PI * 2f));
+            return FromAxis(q, axis);
+        }
+
+        /// <summary>
+        /// How much of the sheared field to use at <paramref name="p"/>: 0 on the axis, 1 from
+        /// <paramref name="core"/> outward. Fields blend f(plain) and f(sheared) by this weight —
+        /// both are continuous across the cut, so the blend is too. (Scaling the shear itself by the
+        /// weight, as <see cref="Apply"/> does, leaves a crack along the cut inside the core: the jump
+        /// there is weight × periods, not a whole number.)
+        /// </summary>
+        public static float CoreWeight(Vector3 p, Axis3 axis, float core)
+        {
+            Vector3 q = ToAxis(p, axis);
+            float r = Mathf.Sqrt(q.x * q.x + q.y * q.y);
+            return r <= 0f ? 0f : Mathf.SmoothStep(0f, 1f, Mathf.Min(r / Mathf.Max(core, 1e-4f), 1f));
+        }
+
+        /// <summary>
+        /// Point-eased shear: the shift scaled by the core weight. Kept for callers that can only move
+        /// points; fields should use <see cref="Shear"/> with <see cref="CoreWeight"/> instead, because
+        /// this one cracks along the cut inside the core.
+        /// </summary>
         public static Vector3 Apply(Vector3 p, Axis3 axis, float dislocation, float period, float core)
         {
             if (dislocation == 0f) return p;

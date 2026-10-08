@@ -118,21 +118,40 @@ namespace PsychedelicLab.EscherWorld
             // perspective, with the camera free — unlike a view-dependent shear or a hidden cut.
             //
             // Same defect that makes a crystal grow in a spiral.
+            //
+            // The warps are the geometry engine's (EscherSpace), so rooms and engine fields agree;
+            // inside the dislocation core the plain and sheared fields are blended, so the cut
+            // never cracks near the axis.
+            var field = new SlicedField { settings = s, w = w * s.wInfluence, time = time };
+            float v;
             if (s.dislocation != 0f || (s.space != null && s.space.Active))
-                p = EscherSpace.ToLattice(s.space, p, ScrewDislocation.TpmsPeriod(s.frequency), time,
-                                          (Axis3)(int)s.dislocationAxis, s.dislocation, s.dislocationCore);
-
-            // Re-orient through the W planes before slicing. On a 4-D field this turns the
-            // structure; on a 3-D one it is the only thing W does.
-            float wEff = w * s.wInfluence;
-            if (s.wRotation != Vector3.zero && s.wInfluence > 0f)
-                RotateW(s.wRotation, ref p, ref wEff);
-
-            float v = Raw(s, p, wEff, time);
+            {
+                var lattice = EscherSpace.Map(s.space, p, ScrewDislocation.TpmsPeriod(s.frequency), time,
+                                              (Axis3)(int)s.dislocationAxis, s.dislocation, s.dislocationCore);
+                v = EscherSpace.Evaluate(field, lattice);
+            }
+            else v = field.Raw(p);
             v -= s.level;
             // A thickened level set: the wall around the surface rather than the surface itself.
             if (s.thickness > 0f) v = Mathf.Abs(v) - s.thickness;
             return v;
+        }
+
+        /// <summary>The room's field on its W slice, at a lattice point.</summary>
+        struct SlicedField : EscherSpace.IRawField
+        {
+            public EscherFieldSettings settings;
+            public float w, time;
+
+            public float Raw(Vector3 p)
+            {
+                // Re-orient through the W planes before slicing. On a 4-D field this turns the
+                // structure; on a 3-D one it is the only thing W does.
+                float wEff = w;
+                if (settings.wRotation != Vector3.zero && settings.wInfluence > 0f)
+                    RotateW(settings.wRotation, ref p, ref wEff);
+                return EscherFields.Raw(settings, p, wEff, time);
+            }
         }
 
         static float Raw(EscherFieldSettings s, Vector3 p, float w, float time)
