@@ -55,7 +55,8 @@ namespace PsychedelicLab.GeometryFX
                            radialMirror > 0f || lengthRepeat > 0f || foldW;
     }
 
-    public enum Axis3 { X, Y, Z }
+    // Axis3 lives in the geometry engine assembly (Engine/Implicit/ScrewDislocation.cs). It used to
+    // be declared here too, which made every use ambiguous once the engine became its own assembly.
 
     public static class KaleidoFold
     {

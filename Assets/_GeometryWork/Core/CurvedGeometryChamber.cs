@@ -30,6 +30,12 @@ namespace PsychedelicLab.GeometryFX
     {
         public enum Mode { Cylinder, Manifold, FractalRings, CalabiYau }
         [NonSerialized] public Func<float, float, Vector3, Vector3> surfaceDeformation;
+        /// <summary>
+        /// Set by a driver whose <see cref="surfaceDeformation"/> ignores its input this frame (a
+        /// fully closed Enneper pillar, a full Scherk tower). The base surface is then not evaluated
+        /// at all: the deformation receives Vector3.zero.
+        /// </summary>
+        [NonSerialized] public bool deformationReplacesSurface;
 
         [Header("Mode")]
         public Mode mode = Mode.Cylinder;
@@ -101,6 +107,10 @@ namespace PsychedelicLab.GeometryFX
         BendType previewType = (BendType)(-1);
 
         Vector3[] vertices;
+        // One evaluated point per lattice node, (sides + 1) x (rings + 1). Every node is shared by
+        // up to four quads (six unwelded vertices), so evaluating the surface per node instead of per
+        // quad corner does a quarter of the work for the same mesh.
+        Vector3[] lattice;
         Vector3[] bary;
         Vector2[] uv;
         int[] indices;
@@ -196,6 +206,7 @@ namespace PsychedelicLab.GeometryFX
             int quads = builtSides * builtRings + builtConnectors * Mathf.Max(builtRings - 1, 0);
             int count = quads * 6;
             vertices = new Vector3[count];
+            lattice = new Vector3[(builtSides + 1) * (builtRings + 1)];
             bary = new Vector3[count];
             uv = new Vector2[count];
             indices = new int[count];
@@ -306,55 +317,91 @@ namespace PsychedelicLab.GeometryFX
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * Mathf.Max(200f, length * 2f));
         }
 
-        void FillGrid(float time)
+        /// <summary>
+        /// Everything about this frame's evaluation that does not depend on (u, v), worked out once
+        /// rather than once per vertex. <see cref="SampleGrid"/> builds the same struct the same way,
+        /// so the particles and the wire cannot disagree.
+        /// </summary>
+        struct Frame
         {
-            float spin = builtMode == Mode.Manifold ? (animate ? time * manifoldSpin : 0f) : 0f;
-            float breath = animate ? 1f + .03f * breathing * Mathf.Sin(time * 1.7f) : 1f;
+            public float time, breath, spinCos, spinSin, calabiAngle;
+            public bool spin;
+            public bool wrapU, wrapV;
+            public float inset;
+            public int patches, perPatch;
+        }
 
-            bool wrapU = true, wrapV = false;
-            bool poles = false;
+        Frame MakeFrame(float time)
+        {
+            var f = new Frame { time = time, wrapU = true, wrapV = false };
+            float spin = builtMode == Mode.Manifold ? (animate ? time * manifoldSpin : 0f) : 0f;
+            f.spin = spin != 0f;
+            f.spinCos = Mathf.Cos(spin * Mathf.PI * 2f);
+            f.spinSin = Mathf.Sin(spin * Mathf.PI * 2f);
+            f.breath = animate ? 1f + .03f * breathing * Mathf.Sin(time * 1.7f) : 1f;
             if (builtMode == Mode.Manifold)
             {
-                wrapU = Manifolds.WrapsU(from) && Manifolds.WrapsU(to);
-                wrapV = Manifolds.WrapsV(from) && Manifolds.WrapsV(to);
-                poles = Manifolds.HasPoles(from) || Manifolds.HasPoles(to);
+                f.wrapU = Manifolds.WrapsU(from) && Manifolds.WrapsU(to);
+                f.wrapV = Manifolds.WrapsV(from) && Manifolds.WrapsV(to);
+                f.inset = Manifolds.HasPoles(from) || Manifolds.HasPoles(to) ? .5f / builtRings : 0f;
+                shape.radius = radius;
+                shape.extent = length;
             }
-            float inset = poles ? .5f / builtRings : 0f;
+            // Calabi-Yau is drawn as n^2 separate patches sharing one grid.
+            int n = Mathf.Clamp(quinticDegree, 2, 7);
+            f.patches = builtMode == Mode.CalabiYau ? n * n : 1;
+            f.perPatch = Mathf.Max(builtSides / f.patches, 2);
+            f.calabiAngle = animateProjectionAngle
+                ? projectionAngle + time * projectionAngleSpeed * Mathf.PI * 2f
+                : projectionAngle;
+            return f;
+        }
 
-            // Calabi-Yau is drawn as n^2 separate patches sharing one grid. Columns that would
-            // straddle a patch boundary collapse to a point instead of stretching across the gap.
-            int patches = builtMode == Mode.CalabiYau ? Mathf.Clamp(quinticDegree, 2, 7) * Mathf.Clamp(quinticDegree, 2, 7) : 1;
-            int perPatch = Mathf.Max(builtSides / patches, 2);
+        void FillGrid(float time)
+        {
+            var f = MakeFrame(time);
+            int stride = builtSides + 1;
 
+            // Pass 1: the surface, once per lattice node.
+            for (int r = 0; r <= builtRings; r++)
+            {
+                float v = VParam(r, f.wrapV, f.inset);
+                int row = r * stride;
+                for (int c = 0; c <= builtSides; c++)
+                {
+                    int patch = 0;
+                    float u;
+                    if (f.patches > 1)
+                    {
+                        // Patch-local u. A column past the last patch only ever feeds skipped quads.
+                        patch = c / f.perPatch;
+                        if (patch >= f.patches) { lattice[row + c] = Vector3.zero; continue; }
+                        u = (float)(c % f.perPatch) / (f.perPatch - 1);
+                    }
+                    else u = UParam(c, f.wrapU);
+                    lattice[row + c] = Grid(u, v, ref f, patch);
+                }
+            }
+
+            // Pass 2: scatter into the unwelded triangles.
             int k = 0;
             for (int r = 0; r < builtRings; r++)
-            for (int s = 0; s < builtSides; s++)
             {
-                if (patches > 1 && (s % perPatch == perPatch - 1 || s / perPatch >= patches))
+                int row0 = r * stride, row1 = row0 + stride;
+                for (int s = 0; s < builtSides; s++)
                 {
-                    // Degenerate quad: six identical vertices draw nothing.
-                    Vector3 none = Vector3.zero;
-                    for (int n = 0; n < 6; n++) vertices[k++] = none;
-                    continue;
+                    if (f.patches > 1 && (s % f.perPatch == f.perPatch - 1 || s / f.perPatch >= f.patches))
+                    {
+                        // Columns that would straddle a patch boundary collapse to a point instead of
+                        // stretching across the gap. Six identical vertices draw nothing.
+                        for (int n = 0; n < 6; n++) vertices[k++] = Vector3.zero;
+                        continue;
+                    }
+                    Vector3 a = lattice[row0 + s], b = lattice[row0 + s + 1];
+                    Vector3 c = lattice[row1 + s + 1], d = lattice[row1 + s];
+                    vertices[k++] = a; vertices[k++] = b; vertices[k++] = c;
+                    vertices[k++] = a; vertices[k++] = c; vertices[k++] = d;
                 }
-
-                float u0, u1, v0 = VParam(r, wrapV, inset), v1 = VParam(r + 1, wrapV, inset);
-                int patch = 0;
-                if (patches > 1)
-                {
-                    patch = s / perPatch;
-                    int local = s % perPatch;
-                    u0 = (float)local / (perPatch - 1);
-                    u1 = (float)(local + 1) / (perPatch - 1);
-                }
-                else { u0 = UParam(s, wrapU); u1 = UParam(s + 1, wrapU); }
-
-                Vector3 a = Grid(u0, v0, time, spin, breath, patch);
-                Vector3 b = Grid(u1, v0, time, spin, breath, patch);
-                Vector3 c = Grid(u1, v1, time, spin, breath, patch);
-                Vector3 d = Grid(u0, v1, time, spin, breath, patch);
-                vertices[k++] = a; vertices[k++] = b; vertices[k++] = c;
-                vertices[k++] = a; vertices[k++] = c; vertices[k++] = d;
             }
             // Grid mode has no struts; any remaining slots stay at the origin.
             while (k < vertices.Length) vertices[k++] = Vector3.zero;
@@ -369,22 +416,17 @@ namespace PsychedelicLab.GeometryFX
             return Mathf.Lerp(inset, 1f - inset, t);
         }
 
-        Vector3 Grid(float u, float v, float time, float spin, float breath, int patch = 0)
+        Vector3 Grid(float u, float v, ref Frame f, int patch)
         {
             Vector3 p;
-            if (builtMode == Mode.CalabiYau)
-            {
-                float angle = animateProjectionAngle
-                    ? projectionAngle + time * projectionAngleSpeed * Mathf.PI * 2f
-                    : projectionAngle;
-                p = Manifolds.CalabiYau(quinticDegree, patch, u, v, angle, calabiScale);
-            }
+            if (deformationReplacesSurface && surfaceDeformation != null && builtMode != Mode.CalabiYau)
+                p = Vector3.zero;
+            else if (builtMode == Mode.CalabiYau)
+                p = Manifolds.CalabiYau(quinticDegree, patch, u, v, f.calabiAngle, calabiScale);
             else if (builtMode == Mode.Manifold)
             {
-                shape.radius = radius;
-                shape.extent = length;
-                p = Manifolds.Evaluate(from, shape, u, v, time);
-                if (morph > 0f) p = Vector3.Lerp(p, Manifolds.Evaluate(to, shape, u, v, time), morph);
+                p = Manifolds.Evaluate(from, shape, u, v, f.time);
+                if (morph > 0f) p = Vector3.Lerp(p, Manifolds.Evaluate(to, shape, u, v, f.time), morph);
             }
             else
             {
@@ -395,13 +437,9 @@ namespace PsychedelicLab.GeometryFX
             }
 
             if (surfaceDeformation != null) p = surfaceDeformation(u, v, p);
-            p *= breath;
-            if (spin != 0f)
-            {
-                float c = Mathf.Cos(spin * Mathf.PI * 2f), s = Mathf.Sin(spin * Mathf.PI * 2f);
-                p = new Vector3(p.x * c - p.y * s, p.x * s + p.y * c, p.z);
-            }
-            p = KaleidoFold.Apply(kaleido, p, time);
+            p *= f.breath;
+            if (f.spin) p = new Vector3(p.x * f.spinCos - p.y * f.spinSin, p.x * f.spinSin + p.y * f.spinCos, p.z);
+            p = KaleidoFold.Apply(kaleido, p, f.time);
             // Bubbles last, and only where one is open: the 3-D form is produced first and the
             // fourth dimension is added locally on top, so the grid and rails stay intact.
             return Hyper4DField.ApplyLocal(transform, p);
@@ -575,15 +613,9 @@ namespace PsychedelicLab.GeometryFX
                 return Vector3.Lerp(RingPointF(r0, side, ringZ[r0]), RingPointF(r1, side, ringZ[r1]), f);
             }
 
-            float spin = builtMode == Mode.Manifold ? (animate ? time * manifoldSpin : 0f) : 0f;
-            float breath = animate ? 1f + .03f * breathing * Mathf.Sin(time * 1.7f) : 1f;
-            float inset = builtMode == Mode.Manifold && (Manifolds.HasPoles(from) || Manifolds.HasPoles(to))
-                ? .5f / builtRings : 0f;
-            int samplePatch = builtMode == Mode.CalabiYau
-                ? Mathf.Min((int)(u * Mathf.Clamp(quinticDegree, 2, 7) * Mathf.Clamp(quinticDegree, 2, 7)),
-                            Mathf.Clamp(quinticDegree, 2, 7) * Mathf.Clamp(quinticDegree, 2, 7) - 1)
-                : 0;
-            return Grid(u, Mathf.Lerp(inset, 1f - inset, v), time, spin, breath, samplePatch);
+            var frame = MakeFrame(time);
+            int samplePatch = builtMode == Mode.CalabiYau ? Mathf.Min((int)(u * frame.patches), frame.patches - 1) : 0;
+            return Grid(u, Mathf.Lerp(frame.inset, 1f - frame.inset, v), ref frame, samplePatch);
         }
 
         // ---- material and bend ----------------------------------------------
@@ -655,7 +687,7 @@ namespace PsychedelicLab.GeometryFX
             generated = null; mesh = null; instance = null; bend = null;
             registeredBridge = null; boundFlowpath = null; source = null;
             previewType = (BendType)(-1);
-            vertices = null; bary = null; uv = null; indices = null; ringZ = null; profiles = null;
+            vertices = null; lattice = null; bary = null; uv = null; indices = null; ringZ = null; profiles = null;
             builtSides = builtRings = builtConnectors = 0;
         }
 

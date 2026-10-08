@@ -34,6 +34,8 @@ namespace PsychedelicLab.GeometryFX
         [Range(.5f, 4f)] public float endFlare = 2.1f;
         [Range(0, .4f)] public float foldFluting = .1f;
         [Range(-180, 180)] public float pillarTwist = 25f;
+        [Tooltip("What the flared floor and ceiling open out to. Square and Hexagonal make each end the pillar's lattice cell, so neighbouring pillars meet edge to edge in one continuous vault. Auto: Round for a single pillar, Square for a hall.")]
+        public PillarFootprint footprint = PillarFootprint.Auto;
 
         [Header("Enneper folding")]
         [Range(.3f, 3f)] public float domain = 2f;
@@ -66,26 +68,65 @@ namespace PsychedelicLab.GeometryFX
 
         GameObject generated;
         readonly List<CurvedGeometryChamber> folds = new List<CurvedGeometryChamber>();
-        int builtCopies, builtLevels, builtResolution, builtBudget;
+        readonly List<PillarDeformer> deformers = new List<PillarDeformer>();
+        int builtCopies, builtLevels, builtResolution, builtColumns, builtBudget;
         bool builtParticles;
         Material builtMaterial, builtParticleMaterial;
         GameObject builtPrefab;
         double elapsed, previous;
 
-        Vector3 ClosePillar(float u, float v, Vector3 source)
+        // ---- the pillar deformation ---------------------------------------------
+        //
+        // Computed once per frame in Update (this component runs before the chambers), then read by
+        // every vertex of every copy. The per-vertex work is EnneperPillar.Point plus one rotation.
+
+        EnneperPillar.Shape frameShape;
+        Quaternion frameUntilt = Quaternion.identity;
+        float frameClosure;
+
+        /// <summary>
+        /// One per generated fold. Carries that copy's own fold phase, so the pillar's flutes turn
+        /// with the Enneper surface they were closed from rather than with a global phase.
+        /// </summary>
+        sealed class PillarDeformer
         {
-            if (pillarClosure <= 0) return source;
-            float t = Mathf.Clamp01(v) * 2f - 1f;
-            float theta = Mathf.Clamp01(u) * Mathf.PI * 2f;
-            float twist = pillarTwist * Mathf.Deg2Rad * t;
-            float phase = phaseDegrees * Mathf.Deg2Rad + (animateFolds ? Mathf.Sin((float)elapsed * 2f * Mathf.PI / Mathf.Max(1, cycleSeconds)) * foldSwing * Mathf.Deg2Rad : 0);
-            // Both flares meet at one continuous waist; vertical slope vanishes at the ends.
-            float radial = foldSize * (waistRadius + endFlare * Mathf.Pow(Mathf.Abs(t), 4f));
-            radial *= 1f + foldFluting * Mathf.Cos(4f * theta + phase + twist);
-            var pillar = new Vector3(radial * Mathf.Cos(theta + twist),
-                foldSize * pillarHalfHeight * Mathf.Sin(t * Mathf.PI * .5f), radial * Mathf.Sin(theta + twist));
-            pillar = Quaternion.Inverse(Quaternion.Euler(foldTilt, 0, 0)) * pillar;
-            return Vector3.Lerp(source, pillar, pillarClosure);
+            readonly EnneperFoldReality owner;
+            public float phase;
+            // The chamber fills a row at a time, so the ring's u-independent terms are reused
+            // until v changes. Invalidated every frame, since the shape may have changed.
+            EnneperPillar.Row row;
+            bool rowValid;
+
+            public PillarDeformer(EnneperFoldReality owner) { this.owner = owner; }
+
+            public void NewFrame() { rowValid = false; }
+
+            public Vector3 Apply(float u, float v, Vector3 source)
+            {
+                float closure = owner.frameClosure;
+                if (closure <= 0f) return source;
+                if (!rowValid || row.v != v) { row = EnneperPillar.MakeRow(owner.frameShape, v); rowValid = true; }
+                // The pillar is built upright in arrangement space; undo the fold tilt so it stays
+                // upright once the chamber's own rotation is applied.
+                Vector3 pillar = owner.frameUntilt * EnneperPillar.Point(owner.frameShape, row, u, phase);
+                return closure >= 1f ? pillar : Vector3.LerpUnclamped(source, pillar, closure);
+            }
+        }
+
+        /// <summary>True when the copies stand as a hall of identical upright pillars on a lattice.</summary>
+        bool PillarHall => consistentCopies && pillarClosure >= .999f;
+
+        PillarFootprint ResolveFootprint(int pillars) =>
+            footprint != PillarFootprint.Auto ? footprint
+            : PillarHall && pillars > 1 ? PillarFootprint.Square : PillarFootprint.Round;
+
+        /// <summary>Lattice spacing: never closer than one and a half waist diameters.</summary>
+        Vector2 HallSpacing(PillarFootprint resolved)
+        {
+            float minimum = foldSize * waistRadius * 3f;
+            float across = Mathf.Max(spread, minimum);
+            return resolved == PillarFootprint.Hexagonal ? new Vector2(across, across)
+                 : new Vector2(across, Mathf.Max(depthSpacing, minimum));
         }
 
         [ContextMenu("Frame single Enneper pillar for camera")]
@@ -126,50 +167,91 @@ namespace PsychedelicLab.GeometryFX
         {
             int count = Mathf.Clamp(copiesPerLevel, 1, 12), depth = Mathf.Clamp(levels, 1, 8);
             int grid = Mathf.Clamp(Mathf.Min(resolution, Mathf.FloorToInt(Mathf.Sqrt((float)surfaceCellBudget / (count * depth)))), 8, 192);
+            var resolved = ResolveFootprint(count * depth);
+            bool lattice = resolved == PillarFootprint.Square || resolved == PillarFootprint.Hexagonal;
+            // Lattice ends need a vertex on every cell corner: (columns - 1) divisible by 24.
+            int columns = lattice ? EnneperPillar.SnapColumns(grid) : grid;
             if (!foldMaterial) { Release(); return; }
             if (!generated || builtCopies != count || builtLevels != depth || builtResolution != grid ||
-                builtMaterial != foldMaterial || builtParticles != particleLayer || builtPrefab != particlePrefab ||
-                builtParticleMaterial != particleMaterial || builtBudget != totalParticleBudget)
-                Build(count, depth, grid);
+                builtColumns != columns || builtMaterial != foldMaterial || builtParticles != particleLayer ||
+                builtPrefab != particlePrefab || builtParticleMaterial != particleMaterial ||
+                builtBudget != totalParticleBudget)
+                Build(count, depth, grid, columns);
             double now = Time.realtimeSinceStartupAsDouble;
             if (animateFolds && (Application.isPlaying || previewAnimation)) elapsed += System.Math.Min(.1, now - previous);
             previous = now;
             float time = (float)elapsed;
+
+            // Shared per-frame state for every vertex of every copy.
+            Vector2 spacing = HallSpacing(resolved);
+            frameShape = new EnneperPillar.Shape
+            {
+                size = foldSize, waist = waistRadius, halfHeight = pillarHalfHeight, endFlare = endFlare,
+                fluting = foldFluting, twist = pillarTwist * Mathf.Deg2Rad, footprint = resolved,
+                cellHalf = EnneperPillar.CellHalf(resolved, spacing)
+            };
+            frameUntilt = Quaternion.Inverse(Quaternion.Euler(foldTilt, 0, 0));
+            frameClosure = pillarClosure;
+            float swing = Mathf.Sin(time * 2f * Mathf.PI / Mathf.Max(1, cycleSeconds)) * foldSwing;
+            var tilt = Quaternion.Euler(foldTilt, 0, 0);
+
             for (int i = 0; i < folds.Count; i++)
             {
                 int level = i / count, copy = i % count;
-                float scale = Mathf.Pow(Mathf.Clamp(recursiveScale, .35f, .95f), level);
-                float angle = 360f * copy / count + level * levelTwist + time * rotationDegreesPerSecond;
-                float radians = angle * Mathf.Deg2Rad;
                 var chamber = folds[i];
-                float radius = spread * (arrangement == Arrangement.NestedFlower ? scale : 1f);
-                float z = arrangement == Arrangement.NestedFlower ? depthSpacing * (1f - scale) : level * depthSpacing;
-                chamber.transform.localPosition = new Vector3(Mathf.Cos(radians) * radius, Mathf.Sin(radians) * radius, z);
-                chamber.transform.localRotation = Quaternion.Euler(foldTilt, 0, angle);
-                chamber.transform.localScale = Vector3.one * scale;
-                if (arrangement == Arrangement.SpiralPillars)
+                Vector3 position;
+                Quaternion rotation;
+                float scale = 1f;
+
+                if (PillarHall)
                 {
-                    // Keep the reference fold's pillar orientation; repeat the entire form.
-                    chamber.transform.localPosition = new Vector3((copy - (count - 1) * .5f) * spread, 0, level * depthSpacing);
-                    chamber.transform.localRotation = Quaternion.Euler(foldTilt, level * levelTwist, 0);
-                    chamber.transform.localScale = Vector3.one * scale;
-                }
-                if (count == 1 && depth == 1)
-                {
-                    chamber.transform.localPosition = Vector3.zero;
-                    chamber.transform.localRotation = Quaternion.Euler(foldTilt, 0, 0);
-                    chamber.transform.localScale = Vector3.one;
-                }
-                if (consistentCopies && pillarClosure >= .999f)
-                {
+                    // A hall: identical upright pillars on the lattice, stable as copies are added
+                    // (columns fill 0, +1, -1, +2, ...). With a lattice footprint each pillar's floor
+                    // and ceiling are its cell, so neighbours meet edge to edge.
                     int column = copy == 0 ? 0 : (copy + 1) / 2 * (copy % 2 == 1 ? 1 : -1);
-                    float minimumSpacing = foldSize * waistRadius * 3f;
-                    chamber.transform.localPosition = new Vector3(column * Mathf.Max(spread, minimumSpacing), 0, level * Mathf.Max(depthSpacing, minimumSpacing));
-                    chamber.transform.localRotation = Quaternion.Euler(foldTilt, 0, 0);
-                    chamber.transform.localScale = Vector3.one;
+                    position = EnneperPillar.LatticeCentre(resolved, column, level, spacing);
+                    rotation = tilt;
                 }
-                float phase = phaseDegrees + level * phasePerLevel + copy * phasePerCopy;
-                chamber.shape.enneperPhase = (phase + Mathf.Sin(time * 2f * Mathf.PI / Mathf.Max(1, cycleSeconds)) * foldSwing) * Mathf.Deg2Rad;
+                else if (count == 1 && depth == 1)
+                {
+                    position = Vector3.zero;
+                    rotation = tilt;
+                }
+                else
+                {
+                    scale = Mathf.Pow(Mathf.Clamp(recursiveScale, .35f, .95f), level);
+                    float angle = 360f * copy / count + level * levelTwist + time * rotationDegreesPerSecond;
+                    if (arrangement == Arrangement.SpiralPillars)
+                    {
+                        // Keep the reference fold's pillar orientation; repeat the entire form.
+                        position = new Vector3((copy - (count - 1) * .5f) * spread, 0, level * depthSpacing);
+                        rotation = Quaternion.Euler(0, level * levelTwist, 0) * tilt;
+                    }
+                    else
+                    {
+                        float radians = angle * Mathf.Deg2Rad;
+                        float radius = spread * (arrangement == Arrangement.NestedFlower ? scale : 1f);
+                        float z = arrangement == Arrangement.NestedFlower ? depthSpacing * (1f - scale) : level * depthSpacing;
+                        position = new Vector3(Mathf.Cos(radians) * radius, Mathf.Sin(radians) * radius, z);
+                        // Turn about the sightline *after* the tilt, so every copy is the same object
+                        // rotated about Z — the crown is exactly n-fold symmetric, and closed pillars
+                        // stand as spokes. (Euler(tilt, 0, angle) spun each copy about its own tilted
+                        // axis instead, which broke the symmetry and leaned the pillars every which way.)
+                        rotation = Quaternion.Euler(0, 0, angle) * tilt;
+                    }
+                }
+
+                chamber.transform.localPosition = position;
+                chamber.transform.localRotation = rotation;
+                chamber.transform.localScale = Vector3.one * scale;
+
+                // One phase per copy, shared by the Enneper surface and its pillar flutes.
+                float phase = (phaseDegrees + level * phasePerLevel + copy * phasePerCopy + swing) * Mathf.Deg2Rad;
+                chamber.shape.enneperPhase = phase;
+                deformers[i].phase = phase;
+                deformers[i].NewFrame();
+                // Fully closed, the pillar ignores the Enneper point under it; skip computing it.
+                chamber.deformationReplacesSurface = pillarClosure >= 1f;
                 chamber.shape.enneperDomain = domain;
                 chamber.radius = Mathf.Max(.1f, foldSize);
                 chamber.wireOpacity = wireOpacity;
@@ -178,12 +260,13 @@ namespace PsychedelicLab.GeometryFX
                 chamber.bridge = bridge; chamber.worldGridScan = worldGridScan;
             }
         }
-        void Build(int count, int depth, int grid)
+
+        void Build(int count, int depth, int grid, int columns)
         {
             Release();
             generated = new GameObject("Generated Enneper folds") { hideFlags = HideFlags.HideAndDontSave };
             generated.SetActive(false); generated.transform.SetParent(transform, false);
-            builtCopies = count; builtLevels = depth; builtResolution = grid; builtMaterial = foldMaterial;
+            builtCopies = count; builtLevels = depth; builtResolution = grid; builtColumns = columns; builtMaterial = foldMaterial;
             builtParticles = particleLayer; builtPrefab = particlePrefab; builtParticleMaterial = particleMaterial; builtBudget = totalParticleBudget;
             for (int level = 0; level < depth; level++) for (int copy = 0; copy < count; copy++)
             {
@@ -191,8 +274,10 @@ namespace PsychedelicLab.GeometryFX
                 go.transform.SetParent(generated.transform, false);
                 var c = go.AddComponent<CurvedGeometryChamber>();
                 c.mode = CurvedGeometryChamber.Mode.Manifold; c.from = c.to = ManifoldSurface.Enneper;
-                c.autoCycle = false; c.animate = false; c.sides = c.rings = grid;
-                c.surfaceDeformation = ClosePillar;
+                c.autoCycle = false; c.animate = false; c.sides = columns; c.rings = grid;
+                var deformer = new PillarDeformer(this);
+                deformers.Add(deformer);
+                c.surfaceDeformation = deformer.Apply;
                 c.chamberMaterial = foldMaterial; c.hideQuadDiagonals = hideQuadDiagonals;
                 c.latticeDivisor = latticeDivisor;
                 c.bridge = bridge; c.worldGridScan = worldGridScan; folds.Add(c);
@@ -216,7 +301,7 @@ namespace PsychedelicLab.GeometryFX
                 generated.SetActive(false);
                 if (Application.isPlaying) Destroy(generated); else DestroyImmediate(generated);
             }
-            generated = null; folds.Clear();
+            generated = null; folds.Clear(); deformers.Clear();
         }
         void OnDisable()
         {

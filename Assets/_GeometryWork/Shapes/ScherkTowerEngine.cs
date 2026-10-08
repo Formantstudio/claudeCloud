@@ -147,8 +147,11 @@ namespace PsychedelicLab.GeometryFX
         GameObject builtPrefab;
         double elapsed, previous;
 
-        // Live twist, including the animated swing. Read by the deformation hook.
-        float ActiveTwist => twistPerPeriod + (animateTower
+        // Live twist, including the animated swing. Computed once per frame in Update (this component
+        // runs before the chambers) and read by every vertex; it used to take a sine per vertex.
+        float liveTwist;
+
+        float ActiveTwistNow => twistPerPeriod + (animateTower
             ? Mathf.Sin((float)elapsed * 2f * Mathf.PI / Mathf.Max(1, cycleSeconds)) * twistSwing
             : 0f);
 
@@ -201,7 +204,7 @@ namespace PsychedelicLab.GeometryFX
             float z = height * (float)System.Math.Tanh(Mathf.Log(cx / cy) / height);
 
             // Twist about the vertical, applied to the whole lattice so it stays one surface.
-            float angle = ActiveTwist * Mathf.Deg2Rad * (z / height);
+            float angle = liveTwist * Mathf.Deg2Rad * (z / height);
             float ca = Mathf.Cos(angle), sa = Mathf.Sin(angle);
             float sx = x * towerRadius, sy = y * towerRadius;
 
@@ -246,7 +249,7 @@ namespace PsychedelicLab.GeometryFX
             // Twist and taper: placement-style deformations applied after the chart, so the exact
             // surface is recoverable by setting both to neutral.
             float up = Mathf.Clamp01(v);
-            float angle = ActiveTwist * Mathf.Deg2Rad * up * halfPeriods;
+            float angle = liveTwist * Mathf.Deg2Rad * up * halfPeriods;
             float ca = Mathf.Cos(angle), sa = Mathf.Sin(angle);
             float scale = towerRadius * Mathf.Lerp(1f, taper, up);
 
@@ -356,6 +359,7 @@ namespace PsychedelicLab.GeometryFX
                 elapsed += System.Math.Min(.1, now - previous);
             previous = now;
             float time = (float)elapsed;
+            liveTwist = ActiveTwistNow;
 
             for (int i = 0; i < towers.Count; i++)
             {
@@ -369,6 +373,8 @@ namespace PsychedelicLab.GeometryFX
                 chamber.transform.localScale = Vector3.one;
 
                 chamber.from = chamber.to = baseSurface;
+                // A full tower ignores the base surface under it; skip evaluating it.
+                chamber.deformationReplacesSurface = towerForm >= 1f;
                 chamber.radius = Mathf.Max(2f, towerRadius * 2f);
                 chamber.length = Mathf.Max(4f, periodHeight * Mathf.Max(periods, 1) * 2f);
                 chamber.wireOpacity = wireOpacity;
