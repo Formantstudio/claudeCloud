@@ -167,6 +167,12 @@ Mandelbulb (id 9 fell through to the gyroid); Mandelbox scale, radii and iterati
 Barth's W and the Menger / Sierpinski depth hard-coded; W influence ignored; Goursat's
 pow(negative, 4), NaN on most GPUs.
 
+- [x] **7.2 (added) Type-check every shader.** `Tools/ShaderCheck/check.py` compiles each pass of
+      all 9 `.shader` files with glslang, for the vertex and fragment entry points, with no keywords
+      and with each declared keyword: 137 compiles, all clean. URP core, Curved World and
+      WorldGridScan are not in the repository, so `stubs/` declares the symbols the shaders use with
+      their real signatures. A type check, not a render; the first compile evidence these shaders have.
+
 ## P8 · Morin surface
 
 - [ ] **8.1** One more sourcing attempt. Implement only with a cited formula, verified by property
