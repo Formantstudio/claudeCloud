@@ -181,6 +181,7 @@ namespace PsychedelicLab.GeometryFX
 
         void Build()
         {
+            sampleFrameTime = float.NaN;
             Release();
             if (!chamberMaterial) return;
 
@@ -360,9 +361,17 @@ namespace PsychedelicLab.GeometryFX
             return f;
         }
 
+        // The frame the last fill used, kept for SampleGrid: a swarm samples thousands of points a
+        // frame, and rebuilding the frame for each cost about a third of every sample. Refreshed by
+        // every fill, so inspector changes reach the particles with the wire.
+        Frame sampleFrame;
+        float sampleFrameTime = float.NaN;
+
         void FillGrid(float time)
         {
             var f = MakeFrame(time);
+            sampleFrame = f;
+            sampleFrameTime = time;
             int stride = builtSides + 1;
 
             // Pass 1: the surface, once per lattice node.
@@ -615,7 +624,8 @@ namespace PsychedelicLab.GeometryFX
                 return Vector3.Lerp(RingPointF(r0, side, ringZ[r0]), RingPointF(r1, side, ringZ[r1]), f);
             }
 
-            var frame = MakeFrame(time);
+            if (time != sampleFrameTime) { sampleFrame = MakeFrame(time); sampleFrameTime = time; }
+            ref Frame frame = ref sampleFrame;
             int samplePatch = builtMode == Mode.CalabiYau ? Mathf.Min((int)(u * frame.patches), frame.patches - 1) : 0;
             return Grid(u, Mathf.Lerp(frame.inset, 1f - frame.inset, v), ref frame, samplePatch);
         }

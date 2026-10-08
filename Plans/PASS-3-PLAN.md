@@ -124,12 +124,19 @@ Archimedean solids (sC and sD included), tangency and planarity, bad notation, t
 
 ## P5 · Performance, round 2
 
-- [ ] **5.1 `SampleGrid` frame caching:** particle swarms call it thousands of times a frame; reuse
+- [x] **5.1 `SampleGrid` frame caching:** particle swarms call it thousands of times a frame; reuse
       the frame constants the fill computed.
-- [ ] **5.2 `ManifoldComboChamber`:** check for the same per-corner re-evaluation; fix with parity.
-- [ ] **5.3 Escher rooms (`EscherSurfaceBuilder`):** profile the marching-cubes emission and speed it
+- [x] **5.2 `ManifoldComboChamber`:** check for the same per-corner re-evaluation; fix with parity.
+- [x] **5.3 Escher rooms (`EscherSurfaceBuilder`):** profile the marching-cubes emission and speed it
       up with output parity.
-- [ ] **5.4 Re-measure everything** and record before/after.
+- [x] **5.4 Re-measure everything** and record before/after.
+
+**P5 result** (Release .NET, 4 cores, best of 5; recorded in the Engine README). `SampleGrid`
+127 → 79 ns (torus) and 131 → 93 ns (Boy's), same values; combo fill 13.4 → 5.3 ms for three
+morphing 96×64 layers; Escher room at 96³ 365 → 112 ms and at 48³ 49 → 24 ms, bit-identical to the
+serial build (`RoomBuild` test over every field and extraction). The second pass's "threading the
+rooms gives no gain" was measured with the stand-in's mesh upload included; sampling alone was the
+largest real cost. New tests: particles land on the wire's lattice nodes for every surface.
 
 ## P6 · Structure
 

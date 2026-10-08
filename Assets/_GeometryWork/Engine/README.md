@@ -78,10 +78,16 @@ ratios are the point.
 | Plain Enneper chamber, per frame | 8.6 ms | 3.6 ms | Same lattice evaluation |
 | 64³ gyroid + dislocation, surface nets | 143 ms | 80 ms | Threaded sampling and placement, identical output |
 | 64³ gyroid + dislocation, dual contouring | 554 ms | 177 ms | Same |
+| Chamber `SampleGrid` (per particle) | 127 ns | 79 ns | The frame constants the fill computed are reused instead of rebuilt per sample (pass 3) |
+| `ManifoldComboChamber`, 3 morphing 96×64 layers | 13.4 ms | 5.3 ms | Each node evaluated once into a lattice (was once per quad corner) (pass 3) |
+| Escher room, 96³ gyroid + dislocation | 365 ms | 112 ms | Sampling and marching on worker threads, z-slabs merged in order; only the edges a case uses (pass 3). Bit-identical to the serial pass |
+| Escher room, 48³ gyroid + dislocation | 49 ms | 24 ms | Same |
+| Scherk hall / colonnade | 2 charts | 1 chart | The default two branches built the same periodic surface twice (pass 3) |
 
-Every chamber-pool engine (Enneper, Scherk, ShapePrinter) gets the chamber speed-up. Threading the
-Escher rooms' marching-cubes sampling was tried and measured no gain (their cost is triangle
-emission), so it was not kept.
+Every chamber-pool engine (Enneper, Scherk, ShapePrinter) gets the chamber speed-up. The second pass
+reported that threading the Escher rooms' sampling gave no gain; that measurement included the
+stand-in's mesh upload, which dominates outside Unity. Measured on its own, sampling was the largest
+real cost (217 of 365 ms at 96³), and threading it is kept. Room timings exclude the mesh upload.
 
 ## Tests
 

@@ -91,3 +91,21 @@ public class ComboAndVertexGrid
         Assert.AreEqual(2 * 4 * 5 * 2, edges.Count);
     }
 }
+
+/// <summary>Particles and wire agree: SampleGrid at a lattice node is that node's vertex, for every surface.</summary>
+public class ChamberSampling
+{
+    [TestCaseSource(typeof(ChamberTopology), nameof(ChamberTopology.Surfaces))]
+    public void SampleGridHitsTheLatticeNodes(ManifoldSurface surface)
+    {
+        const int S = 37, R = 23;
+        var c = ChamberTopology.Build(surface, S, R);
+        var verts = (Vector3[])typeof(CurvedGeometryChamber).GetField("vertices", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(c);
+        for (int r = 0; r < R; r++)
+        for (int s = 0; s < S; s++)
+        {
+            Vector3 node = verts[(r * S + s) * 6];
+            Assert.Less((c.SampleGrid((float)s / S, (float)r / R) - node).magnitude, 1e-5f * (1f + node.magnitude), $"{surface} node {s},{r}");
+        }
+    }
+}
