@@ -16,6 +16,13 @@ Impossible stairs are normally a cheat: they close only from one camera angle, o
 portal to hide the cut. There is a third way, and it falls straight out of the shapes already
 built.
 
+> **Status (2026-10-08).** Built and tested: the screw dislocation (§1, now `Engine/Implicit/ScrewDislocation.cs`,
+> shared by `Implicits` and `EscherFields`), the cubed-to-rounded crossfade (`cubeness` on
+> `DualContourEngine` and `ImplicitSurfaceChamber`), and three further seam-exact warps in
+> `Engine/Implicit/EscherSpace.cs`: sphere inversion, the Droste spiral, and a scrolling window that
+> climbs the staircase forever without drift. The code block in §1 below is kept as history and has a
+> wrong period — see the corrected bullet under it.
+
 **A screw dislocation in a triply periodic surface gives a genuine endless staircase.**
 
 The gyroid, Schwarz P/D, Neovius and Lidinoid are *triply periodic* — they tile space in all three
@@ -84,9 +91,11 @@ public static bool SupportsDislocation(ImplicitShape shape) => IsPeriodic(shape)
 
 Three things that matter in it:
 
-- **The period must match the field's own period.** `2pi / frequency` is the lattice spacing the
-  gyroid actually repeats at. Use any other number and the floors do not line up, which looks like
-  a bug rather than a staircase.
+- **The period must match the field's own period.** The fields are evaluated at `pi * frequency * p`,
+  so the lattice repeats every **`2 / frequency`**, not `2pi / frequency` as first written here (and as
+  shipped in `EscherFields` and `EscherField4D.hlsl` until 2026-10-08). With `2pi / frequency` one
+  circuit climbs pi floors and the field jumps by up to 0.86 (6.0 for Neovius) across the seam. Use
+  any other number and the floors do not line up, which looks like a bug rather than a staircase.
 - **The core must be eased.** A screw dislocation is singular on its own axis, where every azimuth
   meets at once. Without the `dislocationCore` fade the geometry tears along the spine. This is the
   one artefact the construction is prone to.
@@ -250,6 +259,28 @@ Do not build past these.
   the world can transform continuously or in cuts.
 
 ---
+
+## 7a. Harder manipulations now available
+
+All in `EscherSpace`, all exact at their seams (a jump in the sampling coordinates only ever by whole
+lattice periods), applied identically by the engine's implicit fields and the rooms:
+
+| Warp | What it does | Seam rule |
+| --- | --- | --- |
+| Sphere inversion | Folds the whole infinite lattice inside a ball, infinity at the centre — Circle Limit in 3-D. Conformal, so walls keep their angles | None needed: a smooth involution |
+| Droste spiral | Log-cylindrical lattice coordinates: the structure is exactly invariant under scaling by `s`, rooms nested in rooms toward the axis; with a twist, one turn steps one scale level (Print Gallery) | Whole-number sectors and twist |
+| Screw dislocation | One floor per turn | Whole-number dislocation |
+| Scrolling window | The lattice slides through the room; wrapped to one period, so the climb never accumulates float error | Applied last, in lattice coordinates |
+| Cubeness | Vertex → cell centre blend: masonry to flesh with identical topology | — |
+
+The 4-D room fields were also corrected: at W = 0 the rooms' Gyroid, Schwarz P and Neovius were not
+those surfaces (P was the level −1 surface, Neovius shifted by 3, and the 4-D gyroid was not a gyroid
+at any W). Their fourth-dimension terms now vanish at W = 0, on the CPU and in `EscherField4D.hlsl`.
+The GPU path supports the dislocation only; the other warps are CPU-side for now.
+
+On §7's per-frame question: extraction now runs on worker threads. A 64³ gyroid with a dislocation
+re-extracts in about 80 ms (surface nets) or 180 ms (dual contouring) on four cores, against 143 and
+554 ms serially — fast enough for stepped transformation on bars, not yet for every frame.
 
 ## 8. Unverified
 

@@ -26,6 +26,7 @@ This repository isolates the pure procedural geometry, mathematical manifolds, i
 │   ├── polyhedronGenerator/    # Platonic, Archimedean, Johnson solids & Conway operators
 │   └── PsychedelicLab/Warp/    # CPU fractal voxel meshing (Menger, Sierpinski, Mandelbulb)
 ├── Tools/EngineTests/          # Runs the engine's NUnit tests under plain .NET (no Unity needed)
+├── Tools/CoreTests/            # Compile + behaviour checks for Core, Shapes and Escher files
 └── Plans/                      # Specifications, math roadmaps, and execution checklists
     ├── CLAUDE_CLOUD_UPGRADE_PLAN.md   # MASTER EXECUTION PLAN FOR THIS CLOUD SESSION
     ├── GEOMETRY-MAP.md                # Full inventory of existing geometry assets
@@ -63,4 +64,6 @@ records what is done; `Assets/_GeometryWork/Engine/README.md` documents the engi
 ## Testing
 
 - In Unity: Test Runner ▸ EditMode ▸ `GeometryEngine.Tests`.
-- Without Unity (.NET 8 SDK): `dotnet test Tools/EngineTests/Tests`.
+- Without Unity (.NET 8 SDK): `dotnet test Tools/EngineTests/Tests` (engine math) and
+  `dotnet test Tools/CoreTests` (compiles the studio-facing chamber, shape and Escher files against
+  stubs and runs their behaviour tests).

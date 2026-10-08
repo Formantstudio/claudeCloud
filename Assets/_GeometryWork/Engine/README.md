@@ -42,8 +42,10 @@ non-finite positions. It is how the tests (and `Log topology` on any component) 
 | `HopfFibration`, `HopfBaseSet` | `Manifolds/HopfFibration.cs` | `FiberPoint`, the Hopf map `Map`, stereographic `Project` and `ConformalScale`, base-point sets, `Fiber` polylines, Gauss `LinkingNumber` |
 | `StrangeAttractors`, `Attractor`, `AttractorParameters` | `Manifolds/StrangeAttractors.cs` | Lorenz, Rössler, Thomas, Halvorsen, Aizawa (double-precision RK4: `Rk4Step`, `Integrate`, step-doubling `IntegrateAdaptive`); Clifford and De Jong maps (`Iterate`) |
 | `SeifertSurface`, `SeifertPreset` | `Manifolds/SeifertSurface.cs` | Seifert's algorithm on closed braids: braid words (`Word`, `Parse`), `Components`, `EulerCharacteristic`, `Genus`, `Build` |
-| `ScrewDislocation`, `Axis3` | `Implicit/ScrewDislocation.cs` | The Escher step as one shared field-space transform; `TpmsPeriod(frequency)` |
-| `DualContouring`, `IScalarField` | `Implicit/DualContouring.cs` | QEF dual contouring with a truncated eigen pseudo-inverse; `solveQef = false` gives surface nets for comparison |
+| `ScrewDislocation`, `Axis3` | `Implicit/ScrewDislocation.cs` | The Escher step as one shared field-space transform; `TpmsPeriod(frequency)`. `Axis3` is the project's only definition (KaleidoFold and Hyper4DField use it) |
+| `EscherSpace` | `Implicit/EscherSpace.cs` | The harder Escher warps, seam-exact: sphere inversion (Möbius), Droste spiral (scale-periodic, Print Gallery twist), screw dislocation, drift-free scrolling window. `ToLattice` is called by both `Implicits` and `EscherFields` |
+| `DualContouring`, `IScalarField` | `Implicit/DualContouring.cs` | QEF dual contouring with a truncated eigen pseudo-inverse; `solveQef = false` gives surface nets. `cubeness` blends vertices to cell centres (voxel masonry, same topology); `parallel` threads sampling and placement with identical output |
+| `EnneperPillar`, `PillarFootprint` | `Manifolds/EnneperPillar.cs` | The closed Enneper pillar: Round (original) or a Square/Hexagonal lattice footprint whose ends tile the hall into one C¹ vault; row-separable evaluation; lattice centres and corner-snapping column counts |
 | `Implicits`, `ImplicitSettings`, `ImplicitShape` | `Implicit/ImplicitShapes.cs` | The 13 implicit fields (moved here), now with `dislocation`, `dislocationAxis`, `dislocationCore` |
 | `IWireGeometry` | `Core/IWireGeometry.cs` | The particle-swarm contract (moved here so engine components implement it) |
 
@@ -58,18 +60,39 @@ menu. All implement `IWireGeometry`, so a `WireParticleSwarm` on the same object
 | `HopfFibrationEngine` | Hopf Fibration | Swept fiber tubes (constant thickness on S³ when `conformalTubes`), 4-D rotation rates per plane, fibers through the pole clipped; particles flow along fibers, sheared by latitude |
 | `AttractorEngine` | Strange Attractor | Trajectory integrated once and cached; animation slides a window along it. Tube, ribbon or dust |
 | `SeifertSurfaceBuilder` | Seifert Surface | Presets (trefoil, figure-eight, cinquefoil, T(p,q), Hopf link, Borromean) or a braid word (`"1 -2 1 -2"` / `"aBaB"`) |
-| `DualContourEngine` | Dual Contour Surface | Any `ImplicitShape` with the screw dislocation; DC or surface nets; animated re-extraction on a timer |
+| `DualContourEngine` | Dual Contour Surface | Any `ImplicitShape` with the screw dislocation and `EscherSpace` warps; DC or surface nets; cubeness; threaded; animated re-extraction on a timer |
 
 `Shaders/GeometryEngineWire.shader` (`GeometryEngine/Wire`) is the standalone material: constant
 screen-width AA wire, `_ShowDiagonals`, near/far depth fade, dual-tone gradient along U or V, and a
 travelling lattice pulse with a script-driven `_PulsePhase` for beat sync. The chamber materials
 also work on these meshes.
 
+## Performance
+
+Measured outside Unity (Release .NET 8, 4 cores), so absolute numbers will differ in the Editor; the
+ratios are the point.
+
+| Workload | Before | After | How |
+| --- | --- | --- | --- |
+| One 180×180 Enneper pillar, per frame | 38 ms | 6 ms | `CurvedGeometryChamber` evaluates each lattice node once (was four times) with per-frame constants hoisted; pillar evaluated row by row; base surface skipped when the deformation replaces it. Chamber output bit-identical across 8 recorded configurations |
+| Plain Enneper chamber, per frame | 8.6 ms | 3.6 ms | Same lattice evaluation |
+| 64³ gyroid + dislocation, surface nets | 143 ms | 80 ms | Threaded sampling and placement, identical output |
+| 64³ gyroid + dislocation, dual contouring | 554 ms | 177 ms | Same |
+
+Every chamber-pool engine (Enneper, Scherk, ShapePrinter) gets the chamber speed-up. Threading the
+Escher rooms' marching-cubes sampling was tried and measured no gain (their cost is triangle
+emission), so it was not kept.
+
 ## Tests
 
 - In Unity: Test Runner ▸ EditMode ▸ `GeometryEngine.Tests`.
 - Without Unity: `dotnet test Tools/EngineTests/Tests` compiles this folder against a small
-  UnityEngine stand-in and runs the same tests (70 at the time of writing).
+  UnityEngine stand-in and runs the same tests (89 at the time of writing).
+- `dotnet test Tools/CoreTests` compiles the studio-facing files (chamber, manifolds, Enneper and
+  Scherk engines, hyperspace, Escher fields and rooms) against the stand-in plus stubs for the
+  packages not in this repository, and runs behaviour tests that need them: Enneper hall ceilings
+  meet on shared edges, the flower crown is exactly n-fold symmetric, pillar flutes follow each
+  copy's phase, and the engine and room fields agree under every warp.
 
 What they pin down: Rotor4 against the Givens matrices, orthogonality, det = 1, composition,
 subgroup property and slerp; all six polytopes' V/E/F/C, degree and edge length, and the 600-cell
@@ -90,6 +113,13 @@ and every component free of NaN in both its mesh and its particle sampler.
   Caught by its test before it shipped.
 - **Dual contouring winding was inverted** and vertices built on grid corners lying exactly on
   the surface sat up to 14% of a cell off it; both caught by tests and fixed.
+- **Two `Axis3` enums in one namespace** (KaleidoFold's and the engine's) made every use ambiguous
+  once the engine became its own assembly — a Unity compile error, caught by `Tools/CoreTests`.
+- **Enneper pillars** took their flute phase from a global value (ignoring phase per copy and level,
+  and dropping the swing when paused), their flared ends interpenetrated in halls, and NestedFlower /
+  FoldCorridor rotated copies about their own tilted axis, so crowns were not symmetric.
+- **The 4-D room fields were not the named surfaces at W = 0** (Schwarz P off by 1, Neovius by 3,
+  the 4-D gyroid not a gyroid), on CPU and GPU; the GPU field also had the old dislocation period.
 
 ## Not done yet
 

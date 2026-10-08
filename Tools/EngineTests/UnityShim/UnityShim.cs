@@ -107,6 +107,7 @@ namespace UnityEngine
         public float magnitude => Mathf.Sqrt(sqrMagnitude);
         public Vector3 normalized { get { float m = magnitude; return m > 1e-5f ? this / m : zero; } }
         public void Normalize() { this = normalized; }
+        public static Vector3 Normalize(Vector3 v) => v.normalized;
         public static float Dot(Vector3 a, Vector3 b) => a.x * b.x + a.y * b.y + a.z * b.z;
         public static Vector3 Cross(Vector3 a, Vector3 b) =>
             new Vector3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
@@ -183,6 +184,7 @@ namespace UnityEngine
         public float x, y, z, w;
         public Quaternion(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; }
         public static Quaternion identity => new Quaternion(0, 0, 0, 1);
+        public static Quaternion Inverse(Quaternion q) => new Quaternion(-q.x, -q.y, -q.z, q.w);
         public static Quaternion AngleAxis(float deg, Vector3 axis)
         {
             axis = axis.normalized; float h = deg * Mathf.Deg2Rad * .5f, s = Mathf.Sin(h);
@@ -321,26 +323,36 @@ namespace UnityEngine
         public Vector3 position, localPosition, localScale = Vector3.one;
         public Quaternion rotation = Quaternion.identity, localRotation = Quaternion.identity;
         public void SetParent(Transform p, bool keep) { }
+        public Vector3 TransformPoint(Vector3 p) => position + rotation * Vector3.Scale(localScale, p);
+        public Vector3 InverseTransformPoint(Vector3 p) { var q = Quaternion.Inverse(rotation) * (p - position); return new Vector3(q.x / localScale.x, q.y / localScale.y, q.z / localScale.z); }
+        public Matrix4x4 localToWorldMatrix => Matrix4x4.identity;
+        public void SetPositionAndRotation(Vector3 p, Quaternion r) { position = p; rotation = r; }
         public Vector3 forward => rotation * Vector3.forward;
     }
     public class GameObject : Object
     {
         public GameObject(string n) { name = n; transform = new Transform(); }
         public Transform transform;
+        public bool activeSelf = true;
+        public void SetActive(bool a) { activeSelf = a; }
+        public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class => new T[0];
         public T AddComponent<T>() where T : Component { var c = Activator.CreateInstance<T>(); c.gameObject = this; c.transform = transform; c.name = name; return c; }
     }
     public class MeshFilter : Component { public Mesh sharedMesh; }
-    public class Renderer : Component { public Material sharedMaterial; public Rendering.ShadowCastingMode shadowCastingMode; public bool receiveShadows; }
-    public class MeshRenderer : Renderer { }
+    public class Renderer : Component { public Material[] sharedMaterials = new Material[0]; public Material sharedMaterial; public Rendering.ShadowCastingMode shadowCastingMode; public bool receiveShadows; }
+    public class MeshRenderer : Renderer { public bool allowOcclusionWhenDynamic; }
     public class Material : Object
     {
         public Material(Material m) { }
         public bool HasProperty(string n) => false;
+        public Shader shader;
+        public void EnableKeyword(string k) { }
+        public void DisableKeyword(string k) { }
         public void SetFloat(string n, float v) { }
         public void SetVector(string n, Vector4 v) { }
         public void SetColor(string n, Color c) { }
     }
-    public static class Shader
+    public class Shader : Object
     {
         public static int PropertyToID(string n) => n.GetHashCode();
         public static void SetGlobalMatrix(int id, Matrix4x4 m) { }
@@ -348,7 +360,12 @@ namespace UnityEngine
         public static void SetGlobalFloat(int id, float f) { }
     }
     public static class Application { public static bool isPlaying => false; }
-    public static class Time { public static float time, deltaTime; }
+    public static class Time { public static float time, deltaTime, realtimeSinceStartup; public static double realtimeSinceStartupAsDouble; }
+    public static class Gizmos
+    {
+        public static Color color; public static Matrix4x4 matrix;
+        public static void DrawWireSphere(Vector3 c, float r) { } public static void DrawLine(Vector3 a, Vector3 b) { } public static void DrawWireCube(Vector3 c, Vector3 s) { }
+    }
     public static class Debug
     {
         public static void Log(object o) => Console.WriteLine(o);

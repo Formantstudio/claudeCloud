@@ -149,7 +149,8 @@ or the control rig. Full API in `Engine/README.md`; summary:
 | `Manifolds/HopfFibration.cs` + `Components/HopfFibrationEngine.cs` | Hopf fibers as linked tubes and a particle bundle |
 | `Manifolds/StrangeAttractors.cs` + `Components/AttractorEngine.cs` | Lorenz, Rössler, Thomas, Halvorsen, Aizawa (RK4, fixed or adaptive) and Clifford / De Jong maps |
 | `Manifolds/SeifertSurface.cs` + `Components/SeifertSurfaceBuilder.cs` | Seifert's algorithm on closed braids |
-| `Implicit/ScrewDislocation.cs` | The Escher step, shared by `Implicits` and `EscherFields` |
+| `Implicit/ScrewDislocation.cs`, `Implicit/EscherSpace.cs` | The Escher step and the harder warps (inversion, Droste spiral, drift-free scroll), shared by `Implicits` and `EscherFields` |
+| `Manifolds/EnneperPillar.cs` | The closed Enneper pillar and its lattice footprints (Square/Hex ends that tile a hall into one vault) |
 | `Implicit/DualContouring.cs` + `Components/DualContourEngine.cs` | QEF dual contouring; keeps the corners surface nets rounds off |
 | `Shaders/GeometryEngineWire.shader` | `GeometryEngine/Wire`: standalone URP wire with depth fade, gradient, pulse, diagonal toggle |
 | `Tests/Editor/` | 70 NUnit tests; also runnable without Unity via `dotnet test Tools/EngineTests/Tests` |
@@ -190,6 +191,12 @@ or the control rig. Full API in `Engine/README.md`; summary:
 - **A screw dislocation's period is the field's period in the coordinates being sheared.** Fields
   evaluated at π·frequency·p repeat every 2/frequency, not 2π/frequency; with the wrong one the
   staircase tears at the atan2 seam. Whole-number dislocations only.
+- **A chamber node is shared by four quads.** Evaluate the surface per lattice node and scatter
+  it into the six unwelded slots; evaluating per quad corner did the same work four times.
+- **A 4-D extension must vanish at W = 0.** Adding cos w (or 3cos w) to a TPMS shifts its level set
+  at W = 0; the rooms' Gyroid, P and Neovius were wrong surfaces until the engine cross-check.
+- **One enum per name per namespace, across assemblies.** Two `Axis3`s in `PsychedelicLab.GeometryFX`
+  compile separately and fail together.
 - **(L, R) and (−L, −R) are the same 4-D rotation; (L, −R) is not.** Sign-align the pair, never
   one half, before slerping rotors.
 - **`TunnelSparkleWire 1.mat` is a hand-tuned working material** assigned as the chamber's
