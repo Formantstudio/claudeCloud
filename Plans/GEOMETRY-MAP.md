@@ -152,8 +152,15 @@ or the control rig. Full API in `Engine/README.md`; summary:
 | `Implicit/ScrewDislocation.cs`, `Implicit/EscherSpace.cs` | The Escher step and the harder warps (inversion, Droste spiral, drift-free scroll), shared by `Implicits` and `EscherFields` |
 | `Manifolds/EnneperPillar.cs` | The closed Enneper pillar and its lattice footprints (Square/Hex ends that tile a hall into one vault) |
 | `Implicit/DualContouring.cs` + `Components/DualContourEngine.cs` | QEF dual contouring; keeps the corners surface nets rounds off |
+| `Polyhedra/Polyhedron.cs`, `Polyhedra/Conway.cs` + `Components/ConwayPolyhedronEngine.cs` | Conway notation (d a k g c w q r, t j e o s b m n; seeds T C O D I, Pn An Yn) with Hart canonical form; whole-polygon faces |
 | `Shaders/GeometryEngineWire.shader` | `GeometryEngine/Wire`: standalone URP wire with depth fade, gradient, pulse, diagonal toggle |
-| `Tests/Editor/` | 70 NUnit tests; also runnable without Unity via `dotnet test Tools/EngineTests/Tests` |
+| `Tests/Editor/` | 166 NUnit tests; also runnable without Unity via `dotnet test Tools/EngineTests/Tests` |
+
+Outside the engine but tested with it (`Tools/CoreTests`, 154 tests): `Core/ManifoldVertexGrid.cs`
+(the node-and-edge grid of a surface, seam-aware, used by `GeometryFractalEngine`);
+`_EscherWorldManagement/Rooms/EscherFieldGpu.cs` (packs a room field into the portal shader's
+uniforms; `EscherField4D.hlsl` now carries every Escher warp). `Tools/ShaderCheck` type-checks every
+shader with glslang.
 
 `Hyperspace4DAxis` gained `RotationModel.Bivector` (default), which rotates through `Rotor4`;
 `SequentialPlanes` keeps the old Givens chain.
@@ -199,6 +206,20 @@ or the control rig. Full API in `Engine/README.md`; summary:
   compile separately and fail together.
 - **(L, R) and (−L, −R) are the same 4-D rotation; (L, −R) is not.** Sign-align the pair, never
   one half, before slerping rotors.
+- **n quads span n + 1 lines at i / n, on open axes too.** i / (n − 1) samples past the domain's
+  end (and a Lerp-clamped axis then repeats its last row as zero-area quads).
+- **One-sided seams glue (1, v) to (0, 1 − v).** Klein bottle, and the Möbius band / trefoil
+  ribbon at odd half-twists: a node grid must close row j onto the mirrored row.
+- **Topology tests want odd grids and a tight weld.** Even grids land lines on real singularities
+  (horn-torus pinch, Whitney and Kuen pinch points) and on both preimages of 2:1 maps (Roman,
+  cross-cap, Henneberg); a loose weld merges the two sides of a cuspidal line.
+- **The |cos x / cos y| Scherk hall is two interleaved Scherk surfaces**, joined along the walls only
+  by the tanh compression; x-walls fall (cos x → 0), y-walls rise.
+- **Snubs do not canonicalise from operator positions.** Relax the dual (a gyro) and reciprocate, or
+  canonicalise between every primitive step.
+- **HLSL `pow(x, y)` is NaN for x < 0** on most GPUs; write small integer powers as products.
+- **Measure threading on the work, not on the stand-in's mesh upload**, which dominates outside
+  Unity and once hid a 3× win on the Escher rooms.
 - **`TunnelSparkleWire 1.mat` is a hand-tuned working material** assigned as the chamber's
   `chamberMaterial` in `ProceduralTunnelTester-2`. Not a stray duplicate — do not delete it.
 
@@ -211,17 +232,16 @@ or the control rig. Full API in `Engine/README.md`; summary:
 | Hopf fibration | **Built** — `Engine/Components/HopfFibrationEngine` |
 | Attractors (Thomas, Halvorsen, Lorenz, …) | **Built** — `Engine/Components/AttractorEngine` (CPU, cached trajectory; a per-particle GPU integrator is still open) |
 | Seifert surfaces | **Built** — `Engine/Components/SeifertSurfaceBuilder`, on closed braids |
-| Morin surface / sphere eversion | Parameterisation must be sourced against reference images, not written from memory. Still open: sources were unreachable from the cloud session |
+| Morin surface / sphere eversion | Parameterisation must be sourced, not written from memory. Still open: pass 3 searched again, but every source host is blocked by the cloud egress policy. Leads: Kusner's minimal surface (Weierstrass data; inverts to a Morin surface), Bednorz & Bednorz 2017, Apéry 1992 (degree-8 closed halfway model) — see `Engine/README.md` |
 | Mandelbox **rooms** (camera inside) | A raymarcher. `ImplicitShapes.Mandelbox` already provides the DE |
 | Penrose steps | `GitRepoKeijiro/Portals` is the honest route — a staircase whose top flight is a portal to the bottom closes the loop from any angle |
 | Mandelbrot / Julia imagery | A compute shader to a RenderTexture, feeding `ParticleTexture` or the wire tint |
 | GPU implicit extraction | Plan §2.3: compute-shader surface nets / marching cubes |
-| Conway operator pipeline | Plan §3.3: refactor `polyhedronGenerator/scripts/operators` |
 
 ## 5. Unverified
 
-The engine's math (§2a) is unit-tested (70 tests, runnable without Unity), but nothing in §2 or §2a
-has rendered in the Editor yet. The parameterisations come from standard
+The engine's math (§2a) is unit-tested (166 engine + 154 core tests, runnable without Unity) and every
+shader type-checks under glslang, but nothing in §2 or §2a has rendered in the Editor yet. The parameterisations come from standard
 formulations; the failure modes listed in §3 are the known ones, not observed ones. The only
 measured numbers anywhere here are the original chamber's 12 × 48 grid and the Dekeract's 11,264
 particles.

@@ -12,7 +12,8 @@ This repository isolates the pure procedural geometry, mathematical manifolds, i
 ├── Assets/
 │   ├── _GeometryWork/          # Primary geometry engines, shapes, shaders, materials
 │   │   ├── Engine/             # Standalone engine assembly (UnityEngine only): SO(4) rotors,
-│   │   │                       #   4-polytopes, Hopf, attractors, Seifert, dual contouring, tests
+│   │   │                       #   4-polytopes, Hopf, attractors, Seifert, dual contouring,
+│   │   │                       #   Escher warps, Conway polyhedra, tests
 │   │   ├── Core/               # Chamber engines, manifolds, implicit fields, swarms
 │   │   │   ├── NCube/          # 4D-10D hypercubes, 120-cell, Metatron, projections
 │   │   │   └── Editor/         # Inspector tools and scene scaffolding
@@ -27,6 +28,8 @@ This repository isolates the pure procedural geometry, mathematical manifolds, i
 │   └── PsychedelicLab/Warp/    # CPU fractal voxel meshing (Menger, Sierpinski, Mandelbulb)
 ├── Tools/EngineTests/          # Runs the engine's NUnit tests under plain .NET (no Unity needed)
 ├── Tools/CoreTests/            # Compile + behaviour checks for Core, Shapes and Escher files
+├── Tools/ShaderCheck/          # glslang type-check of every shader pass and keyword variant
+├── Tools/ShapeBench/           # Source of the Shape Bench preview page (build.py, check.js)
 └── Plans/                      # Specifications, math roadmaps, and execution checklists
     ├── CLAUDE_CLOUD_UPGRADE_PLAN.md   # MASTER EXECUTION PLAN FOR THIS CLOUD SESSION
     ├── GEOMETRY-MAP.md                # Full inventory of existing geometry assets
@@ -34,6 +37,7 @@ This repository isolates the pure procedural geometry, mathematical manifolds, i
     ├── ESCHER-STEP-PLAN.md            # Screw dislocation & infinite Escher staircases
     ├── GeometryMode.md                # Mode boundaries & rules of engagement
     ├── ENNEPER-REALITY.md             # Enneper minimal surface fold specifications
+    ├── PASS-3-PLAN.md                 # Third pass: audit, verify, complete (with results)
     └── SCHERK-TOWER.md                # Scherk tower doubly-periodic minimal surfaces
 ```
 
@@ -64,6 +68,8 @@ records what is done; `Assets/_GeometryWork/Engine/README.md` documents the engi
 ## Testing
 
 - In Unity: Test Runner ▸ EditMode ▸ `GeometryEngine.Tests`.
-- Without Unity (.NET 8 SDK): `dotnet test Tools/EngineTests/Tests` (engine math) and
-  `dotnet test Tools/CoreTests` (compiles the studio-facing chamber, shape and Escher files against
-  stubs and runs their behaviour tests).
+- Without Unity (.NET 8 SDK): `dotnet test Tools/EngineTests/Tests` (engine math, 166 tests) and
+  `dotnet test Tools/CoreTests` (compiles the studio-facing chamber, shape, swarm and Escher files
+  against stubs and runs their behaviour tests, 154 tests).
+- Shaders: `python3 Tools/ShaderCheck/check.py` (needs `glslang-tools`) type-checks every pass.
+- Shape Bench: `node Tools/ShapeBench/check.js` verifies the preview page's geometry.

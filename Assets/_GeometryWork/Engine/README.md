@@ -25,7 +25,8 @@ Every engine mesh goes through `WireMeshBuilder`, which is where the invariants 
 - quad diagonal hidden by lifting the vanishing bary component by +1 (into [1,2]);
 - `IndexFormat.UInt32` always; bounds fixed at ≥ 200 units so GPU displacement is never culled.
 
-`Quad`, `Triangle`, `Grid(points, columns, rows)`, `Apply(mesh)`; buffers are reused, so rebuilding
+`Quad`, `Triangle`, `Polygon(points)` (a centroid fan whose spokes never draw, for n-gon faces),
+`Grid(points, columns, rows)`, `Apply(mesh)`; buffers are reused, so rebuilding
 at a fixed size does not allocate.
 
 `TopologyReport.Measure(builder)` welds coincident positions and reports V, E, F, χ, boundary edges
@@ -43,10 +44,12 @@ non-finite positions. It is how the tests (and `Log topology` on any component) 
 | `StrangeAttractors`, `Attractor`, `AttractorParameters` | `Manifolds/StrangeAttractors.cs` | Lorenz, Rössler, Thomas, Halvorsen, Aizawa (double-precision RK4: `Rk4Step`, `Integrate`, step-doubling `IntegrateAdaptive`); Clifford and De Jong maps (`Iterate`) |
 | `SeifertSurface`, `SeifertPreset` | `Manifolds/SeifertSurface.cs` | Seifert's algorithm on closed braids: braid words (`Word`, `Parse`), `Components`, `EulerCharacteristic`, `Genus`, `Build` |
 | `ScrewDislocation`, `Axis3` | `Implicit/ScrewDislocation.cs` | The Escher step as one shared field-space transform; `TpmsPeriod(frequency)`. `Axis3` is the project's only definition (KaleidoFold and Hyper4DField use it) |
-| `EscherSpace` | `Implicit/EscherSpace.cs` | The harder Escher warps, seam-exact: sphere inversion (Möbius), Droste spiral (scale-periodic, Print Gallery twist), screw dislocation, drift-free scrolling window. `ToLattice` is called by both `Implicits` and `EscherFields` |
+| `EscherSpace` | `Implicit/EscherSpace.cs` | The harder Escher warps, seam-exact: sphere inversion (Möbius), Droste spiral (scale-periodic, Print Gallery twist, staircase folded in), screw dislocation with a field-level core blend (no crack), drift-free scrolling window. `Map` + `Evaluate` are called by `Implicits`, `EscherFields`, and mirrored in `EscherField4D.hlsl` |
 | `DualContouring`, `IScalarField` | `Implicit/DualContouring.cs` | QEF dual contouring with a truncated eigen pseudo-inverse; `solveQef = false` gives surface nets. `cubeness` blends vertices to cell centres (voxel masonry, same topology); `parallel` threads sampling and placement with identical output |
 | `EnneperPillar`, `PillarFootprint` | `Manifolds/EnneperPillar.cs` | The closed Enneper pillar: Round (original) or a Square/Hexagonal lattice footprint whose ends tile the hall into one C¹ vault; row-separable evaluation; lattice centres and corner-snapping column counts |
 | `Implicits`, `ImplicitSettings`, `ImplicitShape` | `Implicit/ImplicitShapes.cs` | The 13 implicit fields (moved here), now with `dislocation`, `dislocationAxis`, `dislocationCore` |
+| `Polyhedron` | `Polyhedra/Polyhedron.cs` | Polygon mesh with oriented face loops: edge map, CCW vertex rings, `Validate` (closed, oriented, unpinched), Newell normals, planarity, `Emit` to a wire mesh |
+| `Conway` | `Polyhedra/Conway.cs` | Conway notation: seeds T C O D I, Pn An Yn; primitives d a k g c w q r; derived t j e o s b m n; kn / tn; `Parse("tI")` right to left with a face budget; Hart canonical form (`Canonicalize`, via the dual when that relaxes better, or between every step with `Parse(..., canonicalIterations)`) |
 | `IWireGeometry` | `Core/IWireGeometry.cs` | The particle-swarm contract (moved here so engine components implement it) |
 
 ## Components
@@ -60,6 +63,7 @@ menu. All implement `IWireGeometry`, so a `WireParticleSwarm` on the same object
 | `HopfFibrationEngine` | Hopf Fibration | Swept fiber tubes (constant thickness on S³ when `conformalTubes`), 4-D rotation rates per plane, fibers through the pole clipped; particles flow along fibers, sheared by latitude |
 | `AttractorEngine` | Strange Attractor | Trajectory integrated once and cached; animation slides a window along it. Tube, ribbon or dust |
 | `SeifertSurfaceBuilder` | Seifert Surface | Presets (trefoil, figure-eight, cinquefoil, T(p,q), Hopf link, Borromean) or a braid word (`"1 -2 1 -2"` / `"aBaB"`) |
+| `ConwayPolyhedronEngine` | Conway Polyhedron | Any Conway notation, optionally canonical; faces drawn as whole polygons; particles ride the edges |
 | `DualContourEngine` | Dual Contour Surface | Any `ImplicitShape` with the screw dislocation and `EscherSpace` warps; DC or surface nets; cubeness; threaded; animated re-extraction on a timer |
 
 `Shaders/GeometryEngineWire.shader` (`GeometryEngine/Wire`) is the standalone material: constant
@@ -93,12 +97,17 @@ real cost (217 of 365 ms at 96³), and threading it is kept. Room timings exclud
 
 - In Unity: Test Runner ▸ EditMode ▸ `GeometryEngine.Tests`.
 - Without Unity: `dotnet test Tools/EngineTests/Tests` compiles this folder against a small
-  UnityEngine stand-in and runs the same tests (89 at the time of writing).
-- `dotnet test Tools/CoreTests` compiles the studio-facing files (chamber, manifolds, Enneper and
-  Scherk engines, hyperspace, Escher fields and rooms) against the stand-in plus stubs for the
-  packages not in this repository, and runs behaviour tests that need them: Enneper hall ceilings
-  meet on shared edges, the flower crown is exactly n-fold symmetric, pillar flutes follow each
-  copy's phase, and the engine and room fields agree under every warp.
+  UnityEngine stand-in and runs the same tests (166 at the end of pass 3).
+- `dotnet test Tools/CoreTests` compiles the studio-facing files (chamber, combo chamber,
+  manifolds, Enneper and Scherk engines, the NCube swarms, hyperspace, Escher fields and rooms)
+  against the stand-in plus stubs for the packages not in this repository, and runs behaviour tests
+  that need them (154 at the end of pass 3): Enneper hall ceilings meet on shared edges; the engine
+  and room fields agree under every warp; every parametric surface is finite everywhere and has its
+  expected topology through the chamber and the combo; the seam flags match the formulas; Scherk
+  points satisfy their equations; threaded rooms equal serial rooms; the portal shader's field (a
+  line-for-line C# transcription) equals the room field; the HLSL compiles.
+- `python3 Tools/ShaderCheck/check.py` type-checks every `.shader` pass and keyword variant with
+  glslang (`apt install glslang-tools`), against stubs for URP core, Curved World and WorldGridScan.
 
 What they pin down: Rotor4 against the Givens matrices, orthogonality, det = 1, composition,
 subgroup property and slerp; all six polytopes' V/E/F/C, degree and edge length, and the 600-cell
@@ -126,17 +135,31 @@ and every component free of NaN in both its mesh and its particle sampler.
   FoldCorridor rotated copies about their own tilted axis, so crowns were not symmetric.
 - **The 4-D room fields were not the named surfaces at W = 0** (Schwarz P off by 1, Neovius by 3,
   the 4-D gyroid not a gyroid), on CPU and GPU; the GPU field also had the old dislocation period.
+- **Pass 3.** Every open-axis surface grid sampled line i at i/(n−1) over n quads (a column of
+  extrapolated surface and a row of zero-area quads, on 21 of 30 surfaces, in the chamber and the
+  combo); the Klein bottle and Möbius band's node grid closed onto the wrong row; Dini, Bour and the
+  duocylinder had wrong seam flags; the superellipsoid's seam opened by 1.4·10⁻³. The screw core
+  cracked inside the core and could not coexist with the Droste map (fixed through the Shape Bench).
+  Scherk: exact lobes collapsed whole rows to a point, even-column halls cut through cells, and halls
+  were built twice. Snub solids did not canonicalise from operator positions. On the GPU, the portal
+  field lacked the Mandelbulb, hard-coded four fields' parameters, ignored W influence, cracked at
+  the screw core and took pow() of negative numbers.
 
 ## Not done yet
 
 - **Morin surface / sphere eversion (plan 1.4).** The plan and GEOMETRY-MAP both require the
-  parameterisation to be sourced and checked, not written from memory, and the reference sources
-  (arXiv, Wikipedia, mathcurve, Berkeley) were unreachable from the session that built this.
-  `TopologyReport` already gives the checks it will need: χ = 2, orientable, no NaN.
+  parameterisation to be sourced and checked, not written from memory. Pass 3 tried again: search
+  works, but every source host (arXiv, Wikipedia, virtualmathmuseum, math.uiuc.edu, cp4space) is
+  blocked by this environment's egress policy. Leads for a session with access, from the search:
+  Kusner's minimal surface, whose inversion is a Morin surface, has an explicit Weierstrass
+  representation (cited in arXiv 2506.23359, "The Willmore Energy Landscape of Spheres…"); Bednorz &
+  Bednorz (2017), "Analytic sphere eversion using ruled surfaces"; Apéry (1992), the closed halfway
+  model as the zero set of a degree-8 polynomial. `TopologyReport` already gives the checks: χ = 2,
+  four-fold symmetry swapping the sides, a quadruple point on the axis, no NaN.
 - **GPU extraction (plan 2.3)** and **Burst/Jobs** paths — not started.
-- **Conway operator pipeline (plan 3.3)** — not started; `polyhedronGenerator` is untouched.
 - **Calabi–Yau (plan 1.5)** was already implemented (`Manifolds.CalabiYau`, `CurvedGeometryChamber`
   mode `CalabiYau`, degree 2–7 with n² patches and a projection angle); left as is.
 - The new shader features live in `GeometryEngine/Wire`; the existing chamber shaders are unchanged.
-- Nothing here has been rendered in the Unity Editor yet. The math is tested; the components,
-  editor menu and shader have been compiled (C#) or reviewed (HLSL) but not run in Unity.
+- Nothing here has been rendered in the Unity Editor yet. The math is tested; the C# compiles
+  against a stand-in, and every shader type-checks under glslang with stubbed URP / Curved World
+  includes, but none of it has run in Unity.

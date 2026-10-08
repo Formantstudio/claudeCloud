@@ -178,7 +178,12 @@ pow(negative, 4), NaN on most GPUs.
 - [ ] **8.1** One more sourcing attempt. Implement only with a cited formula, verified by property
       tests (immersion, 4-fold symmetry swapping sides, χ = 2). Otherwise stays blocked.
 
+**P8 result: still blocked.** Web search works, but every host that holds a formula (arXiv,
+Wikipedia, virtualmathmuseum, math.uiuc.edu, cp4space) is refused by the egress proxy. The search
+gave leads, recorded in the Engine README: Kusner's minimal surface (explicit Weierstrass data,
+inverts to a Morin surface), Bednorz & Bednorz 2017, Apéry 1992. Nothing written from memory.
+
 ## P9 · Close out
 
-- [ ] **9.1** Upgrade-plan checklist, GEOMETRY-MAP, Engine README, root README.
-- [ ] **9.2** Full test runs (EngineTests, CoreTests), commit, push.
+- [x] **9.1** Upgrade-plan checklist, GEOMETRY-MAP, Engine README, root README.
+- [x] **9.2** Full test runs (EngineTests, CoreTests), commit, push.

@@ -162,7 +162,8 @@ Status after the first cloud session. Details, API and test list: `Assets/_Geome
   the engine assembly with GUIDs kept.
 - [ ] **Step 2:** Implement Phase 1 missing manifolds — **Hopf fibration, RK4 strange attractors (fixed and
   adaptive) and Seifert surfaces done**; **Morin surface / eversion still open**: it must be sourced, not
-  written from memory (GEOMETRY-MAP §4), and the sources were unreachable from the session.
+  written from memory (GEOMETRY-MAP §4), and the sources were unreachable from the session. Pass 3
+  retried: every source host is blocked by the egress policy; leads recorded in the Engine README.
 - [x] **Step 3:** Phase 2 Dual Contouring (`DualContouring`, `DualContourEngine`) and one screw dislocation
   (`ScrewDislocation`) for `Implicits` and `EscherFields`, seamless on all six TPMS. *§2.3 GPU extraction not started.*
 - [x] **Step 4:** Phase 3 `Rotor4` SO(4) algebra (used by `Polytope4DSwarm` and, as the default
@@ -178,3 +179,9 @@ Status after the first cloud session. Details, API and test list: `Assets/_Geome
   `dotnet test Tools/EngineTests/Tests`.
 - [x] **Step 7:** Public APIs documented in `Assets/_GeometryWork/Engine/README.md` and XML docs;
   GEOMETRY-MAP updated. Not yet rendered in the Unity Editor.
+
+**Pass 3** (`Plans/PASS-3-PLAN.md`, with results per item): §3.3 Conway pipeline built; §5 NaN /
+pole safety now swept across every surface and random settings, and every surface's grid topology
+checked through the chamber; Scherk engine verified (new exact Wings chart); Escher rooms 3× faster,
+threaded with bit-identical output; the portal shader carries every Escher warp and is tested
+against the CPU rooms; every shader type-checks under glslang. Engine tests 166, core tests 154.
