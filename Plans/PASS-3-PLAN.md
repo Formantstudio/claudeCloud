@@ -12,16 +12,22 @@ stay out of scope; ESCHER-STEP-PLAN §7 decisions gate the scene manager, so it 
 
 ## P0 · Shape Bench (the claude.ai preview page)
 
-- [ ] **0.1 Fix the 600-cell.** It builds 120 vertices but 96 edges: its 24-cell part is the
+- [x] **0.1 Fix the 600-cell.** It builds 120 vertices but 96 edges: its 24-cell part is the
       (±1, ±1, 0, 0) orientation, which does not fit the 96 even-permutation vertices. Use 8 axis +
       16 half-cube + 96 vertices, sign changes on all four coordinates.
-- [ ] **0.2 Verify every bench shape headlessly** with Node: run the page's geometry functions and
+- [x] **0.2 Verify every bench shape headlessly** with Node: run the page's geometry functions and
       compare V/E with the known counts (and with `Polytope4DLibrary`).
-- [ ] **0.3 Show verification in the page:** expected V/E next to the measured counts, with a
+- [x] **0.3 Show verification in the page:** expected V/E next to the measured counts, with a
       pass/fail mark, so a wrong construction is visible at a glance.
-- [ ] **0.4 Add this project's newer shapes**, ported from the C# engine: Hopf fibers, strange
+- [x] **0.4 Add this project's newer shapes**, ported from the C# engine: Hopf fibers, strange
       attractors, Seifert surfaces, the Enneper pillar (closure dial, Round/Square/Hex footprints, a
       hall), and Escher slices (dislocated gyroid and Droste spiral cross-sections by marching squares).
+
+**P0 result.** Published as version 2 of the Shape Bench. The 600-cell now gives 120 / 720.
+Porting the Escher warps into the bench exposed two real faults in the C# pipeline, fixed in
+`2e77872`: the screw core cracked along the cut inside the core (the old seam tests never probed
+there), and a screw after the Droste map could not be seamless (the staircase now rides inside the
+Droste coordinates). The bench source lives in `Tools/ShapeBench` (`build.py`, `check.js`: 98 checks).
 
 ## P1 · Parametric surface audit (`ManifoldSurfaces`, 30 surfaces)
 

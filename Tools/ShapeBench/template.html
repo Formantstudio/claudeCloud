@@ -1,0 +1,358 @@
+<title>Shape Bench</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#07090d; --panel:#0d1218; --panel2:#111823; --line:#1d2735;
+    --cyan:#2ed9e6; --gold:#e0a94a; --txt:#c7d4df; --dim:#6d8292; --warn:#e06a4a;
+    --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px}
+  #wrap{height:100%;display:grid;grid-template-columns:232px 1fr;gap:1px;background:var(--line)}
+
+  aside{background:var(--panel);overflow-y:auto;padding-block:14px}
+  aside h1{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--cyan);
+    margin:0 0 2px;padding:0 16px;font-weight:600}
+  aside .sub{padding:0 16px 14px;color:var(--dim);font-size:11.5px;line-height:1.5;margin:0}
+  .grp{padding:14px 16px 5px;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--dim);font-weight:600}
+  .shape{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;background:none;
+    border:0;border-left:2px solid transparent;color:var(--txt);font-family:var(--sans);
+    font-size:13px;padding:6px 16px;cursor:pointer}
+  .shape:hover{background:var(--panel2)}
+  .shape[aria-current="true"]{background:var(--panel2);border-left-color:var(--cyan);color:#fff}
+  .shape span{font-family:var(--mono);font-size:10.5px;color:var(--dim);
+    margin-left:auto;font-variant-numeric:tabular-nums}
+  .shape span.bad{color:var(--warn)}
+  .shape:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+
+  main{background:var(--bg);display:grid;grid-template-rows:auto 1fr auto;min-width:0;min-height:0}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;
+    align-items:baseline;gap:14px;flex-wrap:wrap}
+  header h2{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+  header .note{color:var(--dim);font-size:12px;line-height:1.5;flex:1 1 240px;min-width:0;margin:0;max-width:78ch}
+  #stage{position:relative;min-height:0;min-width:0}
+  canvas{display:block;width:100%;height:100%}
+  #counts{position:absolute;top:12px;left:16px;right:16px;font-family:var(--mono);font-size:11px;
+    color:var(--dim);line-height:1.7;pointer-events:none;font-variant-numeric:tabular-nums}
+  #counts b{color:var(--cyan);font-weight:500}
+  #counts .check{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  #counts .mark{font-weight:600;width:1.2em;text-align:center}
+  #counts .pass .mark{color:var(--cyan)}
+  #counts .fail .mark,#counts .fail .got{color:var(--warn)}
+  #counts .want{color:var(--dim)}
+
+  footer{border-top:1px solid var(--line);padding:12px 20px;display:flex;gap:18px;
+    flex-wrap:wrap;align-items:center;background:var(--panel)}
+  .ctl{display:flex;flex-direction:column;gap:4px;min-width:118px}
+  .ctl label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);
+    display:flex;justify-content:space-between;gap:8px}
+  .ctl label b{font-family:var(--mono);color:var(--gold);font-weight:500;
+    font-variant-numeric:tabular-nums;text-transform:none;letter-spacing:0}
+  input[type=range]{width:100%;accent-color:var(--cyan);margin:0}
+  .chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt)}
+  .chk input{accent-color:var(--cyan)}
+
+  @media (max-width:760px){
+    #wrap{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+    aside{max-height:33vh}
+    #stage{min-height:46vh}
+    header,footer{padding-inline:16px}
+  }
+  @media (prefers-reduced-motion: reduce){ .shape{transition:none} }
+</style>
+
+<div id="wrap">
+  <aside>
+    <h1>Shape Bench</h1>
+    <p class="sub">The same math as the C# components, run here so each shape can be checked before it goes in the Editor. Every check the C# tests make is shown live beside the shape.</p>
+    <div id="list"></div>
+  </aside>
+  <main>
+    <header>
+      <h2 id="title">—</h2>
+      <p class="note" id="note"></p>
+    </header>
+    <div id="stage">
+      <canvas id="cv" aria-label="Shape preview"></canvas>
+      <div id="counts" aria-live="polite"></div>
+    </div>
+    <footer id="ctls"></footer>
+  </main>
+</div>
+
+<script>
+/*GEOMETRY*/
+
+/* ---------- catalogue ---------- */
+const CTL={
+  spin:{label:'Spin',min:0,max:1,step:.01,val:.25},
+  morph:{label:'Projection morph',min:0,max:1,step:.01,val:.65},
+  wdist:{label:'Viewer w',min:1.1,max:6,step:.05,val:2.6},
+  flat:{label:'Flatten',min:0,max:1,step:.01,val:1},
+  fill:{label:'Cell fill',min:0,max:1,step:.01,val:1},
+  ang:{label:'Projection angle',min:0,max:6.28,step:.01,val:.785},
+  deg:{label:'Quintic n',min:2,max:5,step:1,val:3},
+  acc:{label:'Accordion',min:0,max:1,step:.01,val:.65},
+  bel:{label:'Bellows',min:.5,max:12,step:.1,val:4},
+  can:{label:'Cantor blend',min:0,max:1,step:.01,val:.6},
+  cand:{label:'Cantor depth',min:0,max:6,step:1,val:4},
+  frac:{label:'Fractal edge',min:0,max:1,step:.01,val:.5},
+  fdep:{label:'Edge depth',min:0,max:8,step:1,val:5},
+  conn:{label:'Connectors',min:0,max:12,step:1,val:6},
+  tol:{label:'Edge tolerance',min:.005,max:.12,step:.005,val:.04},
+  fibers:{label:'Fibers',min:2,max:96,step:1,val:36},
+  rings:{label:'Latitude rings',min:1,max:6,step:1,val:3},
+  lat:{label:'Latitude °',min:10,max:170,step:1,val:90},
+  tilt:{label:'Tilt into W °',min:0,max:90,step:1,val:20},
+  sys:{label:'System',min:0,max:4,step:1,val:0,names:ATTRACTORS.map(a=>a.name)},
+  trail:{label:'Trail points',min:500,max:12000,step:100,val:5000},
+  knot:{label:'Link',min:0,max:BRAIDS.length-1,step:1,val:0,names:BRAIDS.map(b=>b.name)},
+  closure:{label:'Pillar closure',min:0,max:1,step:.01,val:1},
+  foot:{label:'Footprint',min:0,max:2,step:1,val:1,names:['Round','Square','Hexagonal']},
+  hall:{label:'Hall size',min:1,max:3,step:1,val:3},
+  flute:{label:'Fluting',min:0,max:.4,step:.01,val:.1},
+  spacing:{label:'Cell / fold size',min:1,max:3,step:.05,val:1.6},
+  mode:{label:'Warp',min:0,max:2,step:1,val:0,names:['Screw staircase','Droste spiral','Sphere inversion']},
+  disloc:{label:'Floors per turn',min:-2,max:2,step:1,val:1},
+  freq:{label:'Frequency',min:1,max:5,step:.5,val:2},
+  dscale:{label:'Droste scale',min:2,max:8,step:.5,val:4},
+  sectors:{label:'Sectors',min:2,max:12,step:1,val:6},
+  twist:{label:'Droste twist',min:-3,max:3,step:1,val:1}
+};
+const W4=(v,e)=>({want:[v,e]});
+const SHAPES=[
+ {g:'Sacred geometry',id:'metatron',name:"Metatron's Cube",ctl:['spin','flat'],...W4(13,78),
+  note:'Cuboctahedron plus centre, all 78 lines. Flatten collapses it down the 3-fold axis — that projection is the classic glyph, with an outer hexagon and an inner one rotated 30°.',
+  build:o=>metatron(o.flat)},
+
+ {g:'n-cubes',id:'c4',name:'Tesseract',dim:4,ctl:['spin','morph','wdist'],...W4(16,32),build:o=>nCube(4)},
+ {g:'n-cubes',id:'c5',name:'Penteract',dim:5,ctl:['spin','morph','wdist'],...W4(32,80),build:o=>nCube(5)},
+ {g:'n-cubes',id:'c6',name:'Hexeract',dim:6,ctl:['spin','morph','wdist'],...W4(64,192),build:o=>nCube(6)},
+ {g:'n-cubes',id:'c7',name:'Hepteract',dim:7,ctl:['spin','morph','wdist'],...W4(128,448),build:o=>nCube(7)},
+ {g:'n-cubes',id:'c8',name:'Octeract',dim:8,ctl:['spin','morph','wdist'],...W4(256,1024),build:o=>nCube(8)},
+ {g:'n-cubes',id:'c9',name:'Enneract',dim:9,ctl:['spin','morph','wdist'],...W4(512,2304),build:o=>nCube(9)},
+ {g:'n-cubes',id:'c10',name:'Dekeract',dim:10,ctl:['spin','morph','wdist'],...W4(1024,5120),build:o=>nCube(10)},
+
+ {g:'4-polytopes',id:'p120',name:'120-cell',ctl:['spin','wdist','tol'],...W4(600,1200),
+  note:'600 vertices, 1200 edges, 120 dodecahedral cells — and cheaper than the Dekeract. Edges are derived by shortest pairwise distance, never hand-written.',
+  build:o=>polytope4('120',o.tol)},
+ {g:'4-polytopes',id:'p600',name:'600-cell',ctl:['spin','wdist','tol'],...W4(120,720),
+  note:'8 axis vertices, 16 half-cube vertices and 96 even permutations of (φ, 1, 1/φ, 0)/2, with sign changes on all four coordinates. Each vertex has 12 neighbours. An earlier build used the other orientation of the 24-cell and drew only 96 edges.',
+  build:o=>polytope4('600',o.tol)},
+ {g:'4-polytopes',id:'p24',name:'24-cell',ctl:['spin','wdist','tol'],...W4(24,96),build:o=>polytope4('24',o.tol)},
+ {g:'4-polytopes',id:'p16',name:'16-cell',ctl:['spin','wdist','tol'],...W4(8,24),build:o=>polytope4('16',o.tol)},
+ {g:'4-polytopes',id:'p5',name:'5-cell',ctl:['spin','wdist','tol'],...W4(5,10),build:o=>polytope4('5',o.tol)},
+
+ {g:'Polyhedra',id:'icosa',name:'Icosahedron',ctl:['spin'],...W4(12,30),build:o=>platonic('icosa')},
+ {g:'Polyhedra',id:'dodeca',name:'Dodecahedron',ctl:['spin'],...W4(20,30),build:o=>platonic('dodeca')},
+ {g:'Polyhedra',id:'octa',name:'Octahedron',ctl:['spin'],...W4(6,12),build:o=>platonic('octa')},
+ {g:'Polyhedra',id:'cube3',name:'Cube',ctl:['spin'],...W4(8,12),build:o=>platonic('cube')},
+ {g:'Polyhedra',id:'tetra',name:'Tetrahedron',ctl:['spin'],...W4(4,6),build:o=>platonic('tetra')},
+
+ {g:'Chamber surfaces',id:'torus',name:'Torus',ctl:['spin'],
+  build:o=>surfaceGrid(SURF.torus,44,24,true,true)},
+ {g:'Chamber surfaces',id:'klein',name:'Klein bottle',ctl:['spin'],
+  note:'Figure-8 immersion. It passes through itself, which reads correctly because the chamber shader is opaque with Cull Off.',
+  build:o=>surfaceGrid(SURF.klein,46,26,true,true)},
+ {g:'Chamber surfaces',id:'mobius',name:'Möbius strip',ctl:['spin'],
+  build:o=>surfaceGrid(SURF.mobius,56,8,true,false)},
+ {g:'Chamber surfaces',id:'knot',name:'Torus knot (2,3)',ctl:['spin'],
+  note:'Tube swept with a reference-vector frame rather than Frenet, which flips wherever curvature vanishes.',
+  build:o=>surfaceGrid(SURF.knot,90,10,true,true)},
+ {g:'Chamber surfaces',id:'superell',name:'Superellipsoid',ctl:['spin'],
+  note:'Signed powers throughout. A plain pow on a negative base returns NaN and would stretch the mesh to the horizon.',
+  build:o=>surfaceGrid(SURF.superell,36,20,true,false)},
+ {g:'Chamber surfaces',id:'helicoid',name:'Helicoid',ctl:['spin'],
+  build:o=>surfaceGrid(SURF.helicoid,18,52,false,false)},
+ {g:'Chamber surfaces',id:'sphere',name:'Sphere',ctl:['spin'],
+  build:o=>surfaceGrid(SURF.sphere,32,18,true,false)},
+ {g:'Chamber surfaces',id:'cliff',name:'Clifford torus',ctl:['spin','wdist','fill'],
+  note:'The flat torus in S³. Equal rotation rates in the xy and zw planes give the isoclinic inside-out turn. Cell fill walks it off the ridge into the duocylinder.',
+  build:o=>clifford(o.fill)},
+
+ {g:'Engine shapes',id:'hopf',name:'Hopf fibration',ctl:['spin','fibers','rings','lat','tilt'],
+  note:'Each point of the 2-sphere is a great circle on the 3-sphere, projected stereographically to a circle here. Any two fibers link exactly once, which the Gauss linking integral below measures live. Fibers over one latitude are the Villarceau circles of a torus.',
+  build:o=>hopf(o)},
+ {g:'Engine shapes',id:'attr',name:'Strange attractor',ctl:['spin','sys','trail'],
+  note:'Classical RK4 on the chaotic flow, after a transient that lands the trail on the attractor. The check halves the step and expects the error to fall about sixteenfold, the signature of a fourth-order method.',
+  build:o=>attractor(o)},
+ {g:'Engine shapes',id:'seifert',name:'Seifert surface',ctl:['spin','knot'],
+  note:"Seifert's algorithm on the closed braid: one disk per strand, stacked, and a half-twisted band per crossing. The surface is orientable and its boundary is the link, so V − E + F must equal strands − crossings and the boundary must have one loop per component.",
+  build:o=>seifert(o)},
+ {g:'Engine shapes',id:'pillar',name:'Enneper pillars',ctl:['spin','closure','foot','hall','flute','spacing'],
+  note:'Each Enneper fold closes into a pillar with a flared floor and ceiling. With a Square or Hexagonal footprint the ends become the lattice cell, so neighbouring pillars share every cell edge and the hall reads as one vault. Each copy keeps its own fold phase.',
+  build:o=>enneperPillars(o)},
+ {g:'Escher',id:'escher',name:'Escher slice',ctl:['mode','disloc','freq','dscale','sectors','twist'],flat:true,
+  note:'A gyroid cut by a plane, after the warp. Screw staircase: a plane through the axis, where one turn climbs whole floors and the atan2 cut must leave no seam, even inside the core. Droste spiral: across the axis, nested rooms that repeat exactly under scaling. Sphere inversion: the infinite lattice folded into a ball.',
+  build:o=>escherSlice(o)},
+
+ {g:'Hard ones',id:'calabi',name:'Calabi–Yau',ctl:['spin','ang','deg'],
+  note:'Real slice of the Fermat quintic z₁ⁿ + z₂ⁿ = 1, drawn as n² patches. n=5 is the iconic 25-patch figure. Fractional powers go through the polar form or the seams tear.',
+  build:o=>calabi(o.deg,o.ang,9)},
+ {g:'Hard ones',id:'rings',name:'Fractal accordion',ctl:['spin','acc','bel','can','cand','frac','fdep','conn'],
+  note:'Ring spacing pushed through a Cantor IFS, so rings cluster into groups of groups. The edge is a triangle-wave series, sharp enough that the recursion reads.',
+  build:o=>accordion({accordion:o.acc,bellows:o.bel,cantor:o.can,cantorDepth:o.cand,
+    fractal:o.frac,depth:o.fdep,connectors:o.conn})}
+];
+
+/* Checks every shape carries: counts against the known values, plus whatever its build measured. */
+function checksFor(s,geo){ const out=(geo.checks||[]).slice();
+  if(s.want) out.unshift({ok:geo.verts.length===s.want[0]&&geo.edges.length===s.want[1],
+    text:`${geo.verts.length} / ${geo.edges.length}`, want:`${s.want[0]} vertices / ${s.want[1]} edges`});
+  const finite=geo.verts.every(p=>p.every(Number.isFinite));
+  if(!finite) out.push({ok:false,text:'non-finite coordinates',want:'all finite'});
+  return out; }
+
+/* ---------- state ---------- */
+const opt={}; for(const k in CTL) opt[k]=CTL[k].val;
+let current=SHAPES[0], geo=null, checks=[], t=0, showNodes=true, showTravel=true, needs=true;
+
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const listEl=document.getElementById('list'), ctlEl=document.getElementById('ctls');
+const titleEl=document.getElementById('title'), noteEl=document.getElementById('note');
+const countsEl=document.getElementById('counts');
+
+/* sidebar */
+let lastGroup='';
+for(const s of SHAPES){
+  if(s.g!==lastGroup){ lastGroup=s.g;
+    const h=document.createElement('div'); h.className='grp'; h.textContent=s.g; listEl.append(h); }
+  const b=document.createElement('button');
+  b.className='shape'; b.id='sh-'+s.id; b.type='button';
+  b.innerHTML=`${s.name}<span></span>`;
+  b.onclick=()=>select(s);
+  listEl.append(b);
+}
+function select(s){
+  current=s; needs=true;
+  for(const el of listEl.querySelectorAll('.shape')) el.setAttribute('aria-current','false');
+  document.getElementById('sh-'+s.id).setAttribute('aria-current','true');
+  titleEl.textContent=s.name;
+  noteEl.textContent=s.note||'';
+  buildControls(s);
+}
+function buildControls(s){
+  ctlEl.textContent='';
+  for(const key of s.ctl){
+    const c=CTL[key], wrap=document.createElement('div'); wrap.className='ctl';
+    const lab=document.createElement('label'); lab.htmlFor='ctl-'+key;
+    lab.innerHTML=`${c.label}<b id="v-${key}">${fmt(opt[key],c)}</b>`;
+    const inp=document.createElement('input');
+    inp.type='range'; inp.id='ctl-'+key;
+    inp.min=c.min; inp.max=c.max; inp.step=c.step; inp.value=opt[key];
+    inp.oninput=()=>{ opt[key]=parseFloat(inp.value);
+      document.getElementById('v-'+key).textContent=fmt(opt[key],c);
+      if(key!=='spin') needs=true; };
+    wrap.append(lab,inp); ctlEl.append(wrap);
+  }
+  if(s.flat) return;
+  const n=document.createElement('label'); n.className='chk';
+  n.innerHTML='<input type="checkbox" id="ck-n" '+(showNodes?'checked':'')+'> Nodes';
+  n.querySelector('input').onchange=e=>showNodes=e.target.checked;
+  const tv=document.createElement('label'); tv.className='chk';
+  tv.innerHTML='<input type="checkbox" id="ck-t" '+(showTravel?'checked':'')+'> Travellers';
+  tv.querySelector('input').onchange=e=>showTravel=e.target.checked;
+  ctlEl.append(n,tv);
+}
+const fmt=(v,c)=>c.names? c.names[Math.round(v)] : c.step>=1? String(Math.round(v)) : v.toFixed(2);
+
+/* ---------- render ---------- */
+function resize(){ const r=cv.getBoundingClientRect(), d=Math.min(devicePixelRatio||1,2);
+  cv.width=Math.max(1,r.width*d); cv.height=Math.max(1,r.height*d); }
+new ResizeObserver(resize).observe(cv);
+
+function project(p,dim){
+  let q=p.slice();
+  /* n-D down to 3, one perspective division at a time */
+  if(dim>3){ const d=Math.max(opt.wdist,1.1);
+    for(let k=dim-1;k>=3;k--){ const sc=1/Math.max(d-q[k],.25);
+      q[0]*=sc; q[1]*=sc; q[2]*=sc; }
+    const boost=Math.pow(Math.max(d-1,.3),(dim-3)*.5);
+    q=[q[0]*boost,q[1]*boost,q[2]*boost]; }
+  return [q[0],q[1],q[2]];
+}
+function esc(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function frame(){
+  if(needs){ geo=current.build(opt); checks=checksFor(current,geo); needs=false;
+    const sp=document.querySelector('#sh-'+current.id+' span');
+    if(sp){ const bad=checks.some(c=>!c.ok); sp.textContent=(bad?'✗ ':'')+geo.verts.length+'/'+geo.edges.length; sp.classList.toggle('bad',bad); } }
+  if(!current.flat) t+=0.016*opt.spin;
+
+  const W=cv.width,H=cv.height,S=Math.min(W,H)*(current.flat?.46:.33);
+  ctx.fillStyle='#07090d'; ctx.fillRect(0,0,W,H);
+  if(!geo){ requestAnimationFrame(frame); return; }
+
+  const dim=geo.dim, pts=new Array(geo.verts.length);
+  const morph=current.ctl.includes('morph')?opt.morph:1;
+  for(let i=0;i<geo.verts.length;i++){
+    if(geo.flat){ const v=geo.verts[i]; pts[i]=[W/2+v[0]*S, H/2-v[1]*S, 0, 1]; continue; }
+    let p=geo.verts[i].slice();
+    const planes=Math.min(dim*2,20);
+    for(let r=0;r<planes;r++){
+      const a=r%dim,b=(a+3)%dim; if(a===b) continue;
+      rot(p,a,b,.27*(r+1)+t*(0.3+0.07*r)); }
+    let q=project(p,dim);
+    if(dim>3&&morph<1){
+      const cube=[(geo.verts[i][0]>0?.65:-.65)+q[0]*.18,
+                  (geo.verts[i][1]>0?.65:-.65)+q[1]*.18,
+                  (geo.verts[i][2]>0?.65:-.65)+q[2]*.18];
+      q=[cube[0]+(q[0]-cube[0])*morph,cube[1]+(q[1]-cube[1])*morph,
+         cube[2]+(q[2]-cube[2])*morph]; }
+    /* a gentle tilt so 3-D shapes read as solid */
+    const ca=Math.cos(t*.7),sa=Math.sin(t*.7);
+    const x=q[0]*ca-q[2]*sa, z=q[0]*sa+q[2]*ca;
+    const cb=Math.cos(.42),sb=Math.sin(.42);
+    const y=q[1]*cb-z*sb, zz=q[1]*sb+z*cb;
+    const persp=2.6/(2.6+zz);
+    pts[i]=[W/2+x*S*persp, H/2+y*S*persp, zz, persp];
+  }
+
+  /* edges, far first so near ones sit on top */
+  const order=geo.flat? geo.edges.map((e,i)=>i) : geo.edges.map((e,i)=>i)
+    .sort((a,b)=>(pts[geo.edges[b][0]][2]+pts[geo.edges[b][1]][2])
+                -(pts[geo.edges[a][0]][2]+pts[geo.edges[a][1]][2]));
+  ctx.lineWidth=Math.max(W/(geo.flat?1100:1400),.6);
+  for(const i of order){
+    const [a,b]=geo.edges[i], A=pts[a], B=pts[b];
+    const depth=geo.flat?.9:Math.max(0,Math.min(1,(A[3]+B[3])/2-.45));
+    ctx.strokeStyle=`rgba(46,217,230,${(.10+depth*.52).toFixed(3)})`;
+    ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]); ctx.stroke();
+  }
+
+  if(showTravel&&!geo.flat){
+    const per=geo.edges.length>3000?1:2;
+    for(let i=0;i<geo.edges.length;i++){
+      const [a,b]=geo.edges[i],A=pts[a],B=pts[b];
+      for(let j=0;j<per;j++){
+        const ph=((j+.5)/per+t*.6)%1;
+        const x=A[0]+(B[0]-A[0])*ph, y=A[1]+(B[1]-A[1])*ph, pp=(A[3]+B[3])/2;
+        ctx.fillStyle=`rgba(224,169,74,${(.22+Math.max(0,pp-.5)*.85).toFixed(3)})`;
+        const r=Math.max(W/1500,.7)*pp;
+        ctx.fillRect(x-r,y-r,r*2,r*2);
+      }
+    }
+  }
+
+  if(showNodes&&!geo.flat&&pts.length<20000){
+    for(let i=0;i<pts.length;i++){
+      const P=pts[i], r=Math.max(W/640,1.4)*P[3];
+      ctx.fillStyle=`rgba(255,255,255,${(.25+Math.max(0,P[3]-.5)*1.1).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(P[0],P[1],r,0,TAU); ctx.fill();
+    }
+  }
+
+  const travellers=showTravel&&!geo.flat? geo.edges.length*(geo.edges.length>3000?1:2):0;
+  countsEl.innerHTML=
+    `<b>${geo.verts.length.toLocaleString()}</b> ${geo.flat?'points':'nodes'} · `+
+    `<b>${geo.edges.length.toLocaleString()}</b> ${geo.flat?'contour segments':'edges'}<br>`+
+    (geo.flat?'':`<b>${(geo.verts.length+travellers).toLocaleString()}</b> particles at this density`)+
+    (dim>3?`<br>${dim}-D → 3-D, ${Math.min(dim*2,20)} rotation planes`:'')+
+    checks.map(c=>`<div class="check ${c.ok?'pass':'fail'}"><span class="mark">${c.ok?'✓':'✗'}</span>`+
+      `<span class="got">${esc(c.text)}</span><span class="want">expected ${esc(c.want)}</span></div>`).join('');
+  requestAnimationFrame(frame);
+}
+resize(); select(SHAPES[0]); requestAnimationFrame(frame);
+</script>
