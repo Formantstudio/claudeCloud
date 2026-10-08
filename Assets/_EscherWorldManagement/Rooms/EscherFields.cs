@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using PsychedelicLab.GeometryFX;
 
 namespace PsychedelicLab.EscherWorld
 {
@@ -301,34 +302,17 @@ namespace PsychedelicLab.EscherWorld
 
         /// <summary>
         /// Applies the screw shear: bring the axis to Z, measure the azimuth, advance Z by
-        /// `dislocation` lattice periods per turn, put the axis back.
+        /// `dislocation` lattice periods per turn, put the axis back. Shared with the geometry
+        /// engine's implicits through <see cref="ScrewDislocation"/>.
         ///
-        /// The period has to be the field's own (`2pi / frequency`). Any other value and the
-        /// floors do not line up, which reads as a bug rather than a staircase.
+        /// The period has to be the field's own. The periodic fields are evaluated at
+        /// π·frequency·p, so they repeat every 2 / frequency — not 2π / frequency, which is what
+        /// this used: π times too far per circuit, so the floors never met and the field jumped by
+        /// up to 0.86 (6.0 for Neovius) across the atan2 seam at dislocation 1.
         /// </summary>
-        public static Vector3 Dislocate(EscherFieldSettings s, Vector3 p)
-        {
-            Vector3 q = s.dislocationAxis == RoomAxis.X ? new Vector3(p.y, p.z, p.x)
-                      : s.dislocationAxis == RoomAxis.Y ? new Vector3(p.z, p.x, p.y)
-                      : p;
-
-            float radius = new Vector2(q.x, q.y).magnitude;
-            float core = Mathf.Max(s.dislocationCore, .01f);
-            // 0 on the axis, 1 outside the core: fades out the singularity where every azimuth
-            // meets at once. Without this the geometry tears along the spine.
-            float ease = radius <= 0f ? 0f : Mathf.SmoothStep(0f, 1f, Mathf.Min(radius / core, 1f));
-
-            if (ease > 0f)
-            {
-                float azimuth = Mathf.Atan2(q.y, q.x);                  // -pi .. pi
-                float period = Mathf.PI * 2f / Mathf.Max(s.frequency, .01f);
-                q.z += s.dislocation * period * (azimuth / (Mathf.PI * 2f)) * ease;
-            }
-
-            return s.dislocationAxis == RoomAxis.X ? new Vector3(q.z, q.x, q.y)
-                 : s.dislocationAxis == RoomAxis.Y ? new Vector3(q.y, q.z, q.x)
-                 : q;
-        }
+        public static Vector3 Dislocate(EscherFieldSettings s, Vector3 p) =>
+            ScrewDislocation.Apply(p, (Axis3)(int)s.dislocationAxis, s.dislocation,
+                                   ScrewDislocation.TpmsPeriod(s.frequency), s.dislocationCore);
 
         /// <summary>
         /// Rotates a 4-D point through the XW, YW and ZW planes. Turns given in turns, not

@@ -77,6 +77,8 @@ namespace PsychedelicLab.GeometryFX
         ImplicitShape builtShape;
         float builtLevel, builtThickness, builtFrequency, builtPower, builtBoxScale, builtBarth;
         int builtIterations, builtFolds;
+        float builtDislocation, builtDislocationCore;
+        Axis3 builtDislocationAxis;
         float nextRebuild;
         double elapsed;
 
@@ -115,7 +117,10 @@ namespace PsychedelicLab.GeometryFX
             !Mathf.Approximately(builtBoxScale, field.boxScale) ||
             !Mathf.Approximately(builtBarth, field.barthW) ||
             builtIterations != field.iterations ||
-            builtFolds != field.folds;
+            builtFolds != field.folds ||
+            !Mathf.Approximately(builtDislocation, field.dislocation) ||
+            builtDislocationAxis != field.dislocationAxis ||
+            !Mathf.Approximately(builtDislocationCore, field.dislocationCore);
 
         void Snapshot()
         {
@@ -126,6 +131,8 @@ namespace PsychedelicLab.GeometryFX
             builtFrequency = field.frequency; builtPower = field.power;
             builtBoxScale = field.boxScale; builtBarth = field.barthW;
             builtIterations = field.iterations; builtFolds = field.folds;
+            builtDislocation = field.dislocation; builtDislocationAxis = field.dislocationAxis;
+            builtDislocationCore = field.dislocationCore;
         }
 
         // ---- build -----------------------------------------------------------

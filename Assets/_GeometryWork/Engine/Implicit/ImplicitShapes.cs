@@ -39,6 +39,13 @@ namespace PsychedelicLab.GeometryFX
         [Tooltip("Repeats per unit for the periodic surfaces. The TPMS family tiles, which is what makes rooms possible.")]
         [Range(.25f, 8f)] public float frequency = 2f;
 
+        [Header("Escher step")]
+        [Tooltip("Lattice periods gained per circuit of the axis. Whole numbers give a seamless endless staircase on the periodic surfaces; 0 = off.")]
+        [Range(-4f, 4f)] public float dislocation;
+        public Axis3 dislocationAxis = Axis3.Z;
+        [Tooltip("Radius (in field units, the box is -1..1) inside which the shear eases off, so the axis does not tear.")]
+        [Range(.01f, 1f)] public float dislocationCore = .15f;
+
         [Header("Fractals")]
         [Tooltip("Mandelbulb power. 8 is the classic; animating it is the most striking thing it does.")]
         [Range(2, 16)] public float power = 8f;
@@ -65,6 +72,12 @@ namespace PsychedelicLab.GeometryFX
         /// </summary>
         public static float Field(ImplicitSettings s, Vector3 p, float time)
         {
+            // The screw dislocation goes first, with the lattice's true period (the TPMS are
+            // evaluated at π·frequency·p, so they repeat every 2 / frequency), so whole-number
+            // dislocations close without a seam.
+            if (s.dislocation != 0f)
+                p = ScrewDislocation.Apply(p, s.dislocationAxis, s.dislocation,
+                                           ScrewDislocation.TpmsPeriod(s.frequency), s.dislocationCore);
             float v;
             switch (s.shape)
             {
