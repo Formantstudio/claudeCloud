@@ -15,3 +15,7 @@
 *.sln.docstates
 *.DS_Store
 Thumbs.db
+
+# .NET build output for Tools/
+Tools/**/bin/
+Tools/**/obj/

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Compiles Assets/_GeometryWork/Engine (runtime + edit-mode tests) against a small UnityEngine
+    stand-in and runs the NUnit tests under plain .NET, so the math can be checked without Unity:
+
+      dotnet test Tools/EngineTests/Tests
+
+    The same test files run unchanged in Unity's Test Runner (GeometryEngine.Tests assembly).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <NoWarn>CS0649;CS0414;CS0169;CS8632</NoWarn>
+    <EngineRoot>$(MSBuildThisFileDirectory)../../../Assets/_GeometryWork/Engine</EngineRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(EngineRoot)/**/*.cs" Exclude="$(EngineRoot)/Editor/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../UnityShim/UnityShim.csproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+  </ItemGroup>
+</Project>

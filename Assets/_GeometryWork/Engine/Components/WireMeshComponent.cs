@@ -61,7 +61,7 @@ namespace PsychedelicLab.GeometryFX
         public TopologyReport MeasureTopology(float weld = 1e-4f) => TopologyReport.Measure(builder, weld);
 
         [ContextMenu("Log topology")]
-        void LogTopology() => Debug.Log(name + ": " + MeasureTopology());
+        public void LogTopology() => Debug.Log(name + ": " + MeasureTopology());
 
         /// <summary>
         /// Minimum seconds between animated rebuilds. 0 = every frame. Extractors whose cost is
