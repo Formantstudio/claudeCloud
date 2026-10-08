@@ -117,6 +117,8 @@ namespace PsychedelicLab.GeometryFX
             public Mesh mesh;
             public Material material;
             public Vector3[] vertices;
+            /// <summary>One evaluated point per grid node, (u + 1) × (v + 1), scattered into the quads.</summary>
+            public Vector3[] lattice;
             public Vector3[] bary;
             public Vector2[] uv;
             public int u, v;
@@ -356,21 +358,30 @@ namespace PsychedelicLab.GeometryFX
 
             var from = layer.surface;
             var to = layer.morphTo;
-            bool wrapU = Manifolds.WrapsU(from) && Manifolds.WrapsU(to);
-            bool wrapV = Manifolds.WrapsV(from) && Manifolds.WrapsV(to);
-            bool poles = Manifolds.HasPoles(from) || Manifolds.HasPoles(to);
+            bool poles = Manifolds.HasPoles(from, layer.shape) || Manifolds.HasPoles(to, layer.shape);
             float inset = poles ? .5f / b.v : 0f;
+
+            // Each grid node is shared by up to four quads, so evaluate it once (the surface, the morph
+            // target, the kaleidoscope and the bubble field) and scatter. The quads used to evaluate all
+            // four corners each, four times the work for the same positions. Line i of n sits at i / n
+            // on open and wrapping axes alike (see CurvedGeometryChamber.UParam); the old i / (n − 1)
+            // drew a column of extrapolated surface past u = 1 and a row of zero-area quads at v = 1.
+            int stride = b.u + 1, nodes = stride * (b.v + 1);
+            if (b.lattice == null || b.lattice.Length != nodes) b.lattice = new Vector3[nodes];
+            for (int j = 0; j <= b.v; j++)
+            {
+                float v = Mathf.Lerp(inset, 1f - inset, (float)j / b.v);
+                for (int i = 0; i <= b.u; i++)
+                    b.lattice[j * stride + i] = Bubble(b, Sample(layer, (float)i / b.u, v, time, m));
+            }
 
             int k = 0;
             for (int j = 0; j < b.v; j++)
             for (int i = 0; i < b.u; i++)
             {
-                float u0 = UParam(i, b.u, wrapU), u1 = UParam(i + 1, b.u, wrapU);
-                float v0 = VParam(j, b.v, wrapV, inset), v1 = VParam(j + 1, b.v, wrapV, inset);
-                Vector3 p0 = Bubble(b, Sample(layer, u0, v0, time, m));
-                Vector3 p1 = Bubble(b, Sample(layer, u1, v0, time, m));
-                Vector3 p2 = Bubble(b, Sample(layer, u1, v1, time, m));
-                Vector3 p3 = Bubble(b, Sample(layer, u0, v1, time, m));
+                int n = j * stride + i;
+                Vector3 p0 = b.lattice[n], p1 = b.lattice[n + 1];
+                Vector3 p2 = b.lattice[n + stride + 1], p3 = b.lattice[n + stride];
                 b.vertices[k++] = p0; b.vertices[k++] = p1; b.vertices[k++] = p2;
                 b.vertices[k++] = p0; b.vertices[k++] = p2; b.vertices[k++] = p3;
             }
@@ -382,13 +393,6 @@ namespace PsychedelicLab.GeometryFX
         /// <summary>Adds the open bubbles' displacement, in this layer's own space.</summary>
         static Vector3 Bubble(Built b, Vector3 p) =>
             b != null && b.go ? Hyper4DField.ApplyLocal(b.go.transform, p) : p;
-
-        static float UParam(int i, int n, bool wrap) => wrap ? (float)i / n : (float)i / Mathf.Max(n - 1, 1);
-        static float VParam(int j, int n, bool wrap, float inset)
-        {
-            float t = wrap ? (float)j / n : (float)j / Mathf.Max(n - 1, 1);
-            return Mathf.Lerp(inset, 1f - inset, t);
-        }
 
         static Vector3 Sample(ComboLayer layer, float u, float v, float time, float morph)
         {
@@ -505,7 +509,7 @@ namespace PsychedelicLab.GeometryFX
                         : rp;
                 }
 
-                bool poles = Manifolds.HasPoles(layer.surface) || Manifolds.HasPoles(layer.morphTo);
+                bool poles = Manifolds.HasPoles(layer.surface, layer.shape) || Manifolds.HasPoles(layer.morphTo, layer.shape);
                 float inset = poles && b != null ? .5f / b.v : 0f;
                 Vector3 p = Sample(layer, localU, Mathf.Lerp(inset, 1f - inset, Mathf.Clamp01(v)),
                                    (float)elapsed, b != null ? b.morphPhase : layer.morph);

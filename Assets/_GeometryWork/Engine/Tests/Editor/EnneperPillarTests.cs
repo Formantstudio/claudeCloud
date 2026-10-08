@@ -69,11 +69,11 @@ namespace PsychedelicLab.GeometryFX.Tests
                 }
             }
             int columns = EnneperPillar.SnapColumns(180);
-            Assert.AreEqual(0, (columns - 1) % 24);
+            Assert.AreEqual(0, columns % 24);
             for (int k = 0; k < 4; k++)
             {
-                int c = (2 * k + 1) * (columns - 1) / 8;
-                var p = EnneperPillar.Point(s, (float)c / (columns - 1), 1f, 0f);
+                int c = (2 * k + 1) * columns / 8;
+                var p = EnneperPillar.Point(s, (float)c / columns, 1f, 0f);
                 Assert.AreEqual(half.x, Mathf.Abs(p.x), 1e-4f); Assert.AreEqual(half.y, Mathf.Abs(p.z), 1e-4f);
             }
         }

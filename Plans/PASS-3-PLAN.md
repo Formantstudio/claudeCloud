@@ -31,16 +31,42 @@ Droste coordinates). The bench source lives in `Tools/ShapeBench` (`build.py`, `
 
 ## P1 · Parametric surface audit (`ManifoldSurfaces`, 30 surfaces)
 
-- [ ] **1.1 NaN / Infinity sweep:** every surface over its whole (u, v) grid, edges included, across
+- [x] **1.1 NaN / Infinity sweep:** every surface over its whole (u, v) grid, edges included, across
       random settings inside each field's `[Range]`. Plan §5 asks for exactly this guarantee.
-- [ ] **1.2 Fix whatever the sweep finds**, with a regression test per fix.
+- [x] **1.2 Fix whatever the sweep finds**, with a regression test per fix.
+
+**P1 result.** No surface emits NaN or infinity anywhere on its square, at minimum, maximum or random
+settings (`Tools/CoreTests/Tests/ManifoldSweep.cs`, settings randomised from each field's own
+`[Range]` / `[Min]`). The sweep's near miss was the superellipsoid: `SignedPow` amplified float noise
+around zero into a 1.4·10⁻³ seam gap; it now returns 0 below 10⁻⁶.
 
 ## P2 · Chamber topology audit
 
-- [ ] **2.1 Expected topology per surface** (closed or not, orientable or not, χ, boundary loops) from
+- [x] **2.1 Expected topology per surface** (closed or not, orientable or not, χ, boundary loops) from
       the surfaces' known topology, measured through the real chamber mesh with `TopologyReport`.
-- [ ] **2.2 Check `WrapsU` / `WrapsV` / `HasPoles`** against what each parameterisation actually does
+- [x] **2.2 Check `WrapsU` / `WrapsV` / `HasPoles`** against what each parameterisation actually does
       at its seams; fix wrong flags (a wrong flag is a visible seam gap or a doubled wire).
+
+**P2 result.** Every grid that samples a surface had faults, all fixed with tests:
+
+- *Chamber and combo lattices* put open-axis line i at i / (n − 1) over n quads, so an open u-axis drew
+  one column of extrapolated surface past u = 1 and an open v-axis (whose Lerp clamps) a final row of
+  zero-area quads — on 21 of the 30 surfaces. Now i / n on every axis.
+- *Flags*: Dini and Bour do not close in u; the duocylinder closes in v only as the bare ridge, and a
+  full cell has a pole. Settings-aware `WrapsU / WrapsV / HasPoles (surface, settings)` and a new
+  `FlipsAcrossUSeam` (Klein; Möbius and trefoil ribbon at odd half-twists) carry this.
+- *Vertex grid* (`GeometryFractalEngine`, now `ManifoldVertexGrid`): the Klein bottle and Möbius band
+  closed their u-seam onto the same row, drawing chords across the surface; they now join row j to
+  the mirrored row. The Roman surface (wraps in v, pole row) shifts rows by half a step instead of
+  insetting, which had stretched its closing edge to two steps.
+- *Combo chamber* evaluated each grid node four times (once per quad corner); it now fills a lattice
+  once and scatters, the chamber's pattern.
+
+Tests: every surface through the chamber and the combo, welded, matches its expected χ, boundary
+loops and orientability with no degenerate, non-manifold or non-finite faces at two odd grid sizes;
+the flags are checked against the formulas over 40 random settings; vertex-grid seam edges are no
+longer than interior ones. Odd grids matter: even ones land lines on real singularities (horn-torus
+pinch, Whitney and Kuen pinch points) and on the 2:1 Roman, cross-cap and Henneberg maps.
 
 ## P3 · Scherk tower verification
 

@@ -29,7 +29,7 @@ namespace PsychedelicLab.GeometryFX
     /// ends. Neighbouring pillars therefore share each cell edge exactly, at the same height, and both
     /// arrive there horizontally — the floors and ceilings merge into one continuous C¹ vault across
     /// the hall instead of interpenetrating. Cell corners sit at fixed u — (2k+1)/8 for a square cell,
-    /// (2k+1)/12 for a hexagon — so a grid whose (columns − 1) is a multiple of 24 lands a vertex on
+    /// (2k+1)/12 for a hexagon — so a grid of a multiple of 24 columns lands a vertex on
     /// every corner (<see cref="SnapColumns"/>). Between corners the end ring runs straight along the
     /// cell edge, so its chords lie exactly on the shared edge whatever the sampling.
     ///
@@ -157,10 +157,11 @@ namespace PsychedelicLab.GeometryFX
         }
 
         /// <summary>
-        /// Largest column count ≤ <paramref name="columns"/> with (count − 1) divisible by 24, so
-        /// square (eighths) and hexagonal (twelfths) cell corners both land on grid vertices.
+        /// Largest quad count ≤ <paramref name="columns"/> that is a multiple of 24. The chamber puts
+        /// lattice line i at u = i / columns, so square (eighths) and hexagonal (twelfths) cell corners
+        /// both land on grid vertices.
         /// </summary>
-        public static int SnapColumns(int columns) => Mathf.Max(25, ((columns - 1) / 24) * 24 + 1);
+        public static int SnapColumns(int columns) => Mathf.Max(24, (columns / 24) * 24);
 
         /// <summary>
         /// Centre of lattice slot (column, row) for a hall. Square: a rectangular grid of

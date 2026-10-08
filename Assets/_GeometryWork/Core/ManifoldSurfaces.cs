@@ -387,7 +387,13 @@ namespace PsychedelicLab.GeometryFX
             }
         }
 
-        static float SignedPow(float x, float e) => Mathf.Sign(x) * Mathf.Pow(Mathf.Abs(x), e);
+        /// <summary>
+        /// Signed power. Inputs within 1e-6 of zero are treated as zero: a fractional power magnifies
+        /// float residue (sin 2π ≈ -1.7e-7 becomes 0.002 at exponent 0.4), which left the
+        /// superellipsoid's u = 0 and u = 1 columns visibly apart.
+        /// </summary>
+        static float SignedPow(float x, float e) =>
+            Mathf.Abs(x) < 1e-6f ? 0f : Mathf.Sign(x) * Mathf.Pow(Mathf.Abs(x), e);
 
         static float Cosh(float x) => (float)System.Math.Cosh(x);
         static float Sinh(float x) => (float)System.Math.Sinh(x);
@@ -664,6 +670,9 @@ namespace PsychedelicLab.GeometryFX
             switch (surface)
             {
                 // These use u as a linear parameter across an open sheet, not an angle.
+                // Dini winds two pitched turns and Bour carries cos(1.5V), so neither closes in u.
+                case ManifoldSurface.DinisSurface:
+                case ManifoldSurface.BoursSurface:
                 case ManifoldSurface.Helicoid:
                 case ManifoldSurface.Enneper:
                 case ManifoldSurface.KuenSurface:
@@ -707,6 +716,48 @@ namespace PsychedelicLab.GeometryFX
                 default:
                     return true;
             }
+        }
+
+        /// <summary>
+        /// True where the u = 1 edge meets the u = 0 edge mirrored in v — (1, v) is (0, 1 − v) — so the
+        /// surface is one-sided across that seam: the Klein bottle, and the Möbius strip and trefoil
+        /// ribbon when their half-twist count is odd. A grid that joins its last column to its first
+        /// must join row j to row (rows − 1 − j) on these, not to row j.
+        /// </summary>
+        public static bool FlipsAcrossUSeam(ManifoldSurface surface, ManifoldSettings s)
+        {
+            switch (surface)
+            {
+                case ManifoldSurface.KleinBottle: return true;
+                case ManifoldSurface.MobiusStrip:
+                case ManifoldSurface.TrefoilRibbon: return s == null ? true : (s.halfTwists & 1) == 1;
+                default: return false;
+            }
+        }
+
+        /// <summary><see cref="WrapsU(ManifoldSurface)"/> for these settings.</summary>
+        public static bool WrapsU(ManifoldSurface surface, ManifoldSettings s) => WrapsU(surface);
+
+        /// <summary>
+        /// <see cref="WrapsV(ManifoldSurface)"/> for these settings. The duocylinder only closes in v as
+        /// the bare ridge (the Clifford torus); with a cell filled, v runs from one rim to another.
+        /// </summary>
+        public static bool WrapsV(ManifoldSurface surface, ManifoldSettings s)
+        {
+            if (surface == ManifoldSurface.Duocylinder && s != null)
+                return s.cell == DuocylinderCell.Ridge || s.cellFill <= 0f;
+            return WrapsV(surface);
+        }
+
+        /// <summary>
+        /// <see cref="HasPoles(ManifoldSurface)"/> for these settings. A fully filled duocylinder cell
+        /// shrinks one rim to a single point, which is a pole like any other.
+        /// </summary>
+        public static bool HasPoles(ManifoldSurface surface, ManifoldSettings s)
+        {
+            if (surface == ManifoldSurface.Duocylinder && s != null)
+                return s.cell != DuocylinderCell.Ridge && s.cellFill >= .999f;
+            return HasPoles(surface);
         }
 
         /// <summary>

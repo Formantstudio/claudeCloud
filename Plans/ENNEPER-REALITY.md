@@ -15,7 +15,7 @@ The pillar math lives in `Engine/Manifolds/EnneperPillar.cs` (pure, unit-tested)
 **Footprint** decides what the flared floor and ceiling open out to:
 
 - **Round:** the original pillar — a circle of radius Waist + End Flare. Neighbouring flares overlap freely.
-- **Square / Hexagonal:** each end becomes the pillar's lattice cell. Twist and fluting fade to zero at the ends, so neighbouring pillars share each cell edge exactly, at the same height, and both arrive there horizontally. The floors and ceilings merge into one continuous vault across the hall instead of passing through each other. In a hall, Spread (and Depth Spacing, for Square) is the cell size, and the column count snaps to 24k + 1 so every cell corner is a grid vertex.
+- **Square / Hexagonal:** each end becomes the pillar's lattice cell. Twist and fluting fade to zero at the ends, so neighbouring pillars share each cell edge exactly, at the same height, and both arrive there horizontally. The floors and ceilings merge into one continuous vault across the hall instead of passing through each other. In a hall, Spread (and Depth Spacing, for Square) is the cell size, and the column count snaps to a multiple of 24 so every cell corner is a grid vertex.
 - **Auto (default):** Round for a single pillar, Square once Consistent Copies places several at full closure.
 
 ### Arrangement symmetry

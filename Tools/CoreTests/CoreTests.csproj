@@ -18,7 +18,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(R)/_GeometryWork/Engine/**/*.cs" Exclude="$(R)/_GeometryWork/Engine/Editor/**/*.cs;$(R)/_GeometryWork/Engine/Tests/**/*.cs" />
-    <Compile Include="$(R)/_GeometryWork/Core/ManifoldSurfaces.cs;$(R)/_GeometryWork/Core/CurvedGeometryChamber.cs;$(R)/_GeometryWork/Core/AccordionSettings.cs;$(R)/_GeometryWork/Core/RingFractal.cs;$(R)/_GeometryWork/Core/RingGeometry.cs;$(R)/_GeometryWork/Core/ImplicitSurfaceChamber.cs" />
+    <Compile Include="$(R)/_GeometryWork/Core/ManifoldSurfaces.cs;$(R)/_GeometryWork/Core/CurvedGeometryChamber.cs;$(R)/_GeometryWork/Core/AccordionSettings.cs;$(R)/_GeometryWork/Core/RingFractal.cs;$(R)/_GeometryWork/Core/RingGeometry.cs;$(R)/_GeometryWork/Core/ImplicitSurfaceChamber.cs;$(R)/_GeometryWork/Core/ManifoldComboChamber.cs;$(R)/_GeometryWork/Core/ManifoldVertexGrid.cs" />
     <Compile Include="$(R)/_EscherWorldManagement/Hyperspace/Hyper4DField.cs;$(R)/_EscherWorldManagement/Hyperspace/KaleidoFold.cs;$(R)/_EscherWorldManagement/Hyperspace/Hyperspace4DAxis.cs" />
     <Compile Include="$(R)/_EscherWorldManagement/Rooms/EscherFields.cs;$(R)/_EscherWorldManagement/Rooms/EscherRoom.cs;$(R)/_EscherWorldManagement/Rooms/EscherSurfaceBuilder.cs;$(R)/_EscherWorldManagement/Rooms/EscherMarchingTable.cs" />
     <Compile Include="$(R)/_GeometryWork/Shapes/EnneperFoldReality.cs;$(R)/_GeometryWork/Shapes/ScherkTowerEngine.cs" />

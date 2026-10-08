@@ -596,36 +596,15 @@ namespace PsychedelicLab.GeometryFX
                 points.Add(new[] { Mathf.Cos(a) * inv, Mathf.Sin(a) * inv,
                                    Mathf.Cos(b) * inv, Mathf.Sin(b) * inv });
             }
-            GridEdges(u, v, true, true, edges);
+            ManifoldVertexGrid.Edges(u, v, true, true, edges);
         }
 
         static void ManifoldGrid(ShapeSource s, List<float[]> points, List<int> edges)
         {
             int u = Mathf.Clamp(s.uRes, 4, 160), v = Mathf.Clamp(s.vRes, 4, 160);
-            bool wrapU = Manifolds.WrapsU(s.surface), wrapV = Manifolds.WrapsV(s.surface);
-            bool poles = Manifolds.HasPoles(s.surface);
-            float inset = poles ? .5f / v : 0f;
-            for (int j = 0; j < v; j++)
-            for (int i = 0; i < u; i++)
-            {
-                float uu = wrapU ? (float)i / u : (float)i / Mathf.Max(u - 1, 1);
-                float vvRaw = wrapV ? (float)j / v : (float)j / Mathf.Max(v - 1, 1);
-                float vv = Mathf.Lerp(inset, 1f - inset, vvRaw);
-                Vector3 p = Manifolds.Evaluate(s.surface, s.shape, uu, vv, 0f);
-                points.Add(new[] { p.x, p.y, p.z });
-            }
-            GridEdges(u, v, wrapU, wrapV, edges);
-        }
-
-        static void GridEdges(int u, int v, bool wrapU, bool wrapV, List<int> edges)
-        {
-            for (int j = 0; j < v; j++)
-            for (int i = 0; i < u; i++)
-            {
-                int here = j * u + i;
-                if (wrapU || i < u - 1) { edges.Add(here); edges.Add(j * u + (i + 1) % u); }
-                if (wrapV || j < v - 1) { edges.Add(here); edges.Add(((j + 1) % v) * u + i); }
-            }
+            var grid = new List<Vector3>(u * v);
+            ManifoldVertexGrid.Build(s.surface, s.shape, u, v, grid, edges);
+            foreach (var p in grid) points.Add(new[] { p.x, p.y, p.z });
         }
 
         static void HypersphereCloud(ShapeSource s, List<float[]> points, List<int> edges)

@@ -190,6 +190,7 @@ namespace UnityEngine
             axis = axis.normalized; float h = deg * Mathf.Deg2Rad * .5f, s = Mathf.Sin(h);
             return new Quaternion(axis.x * s, axis.y * s, axis.z * s, Mathf.Cos(h));
         }
+        public static Quaternion Euler(Vector3 e) => Euler(e.x, e.y, e.z);
         public static Quaternion Euler(float x, float y, float z) =>
             AngleAxis(y, Vector3.up) * AngleAxis(x, Vector3.right) * AngleAxis(z, Vector3.forward);
         public static Quaternion operator *(Quaternion a, Quaternion b) => new Quaternion(
@@ -377,8 +378,8 @@ namespace UnityEngine
     [AttributeUsage(AttributeTargets.Field)] public sealed class HideInInspector : Attribute { }
     [AttributeUsage(AttributeTargets.Field)] public sealed class TooltipAttribute : Attribute { public TooltipAttribute(string t) { } }
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)] public sealed class HeaderAttribute : Attribute { public HeaderAttribute(string t) { } }
-    [AttributeUsage(AttributeTargets.Field)] public sealed class RangeAttribute : Attribute { public RangeAttribute(float a, float b) { } }
-    [AttributeUsage(AttributeTargets.Field)] public sealed class MinAttribute : Attribute { public MinAttribute(float a) { } }
+    [AttributeUsage(AttributeTargets.Field)] public sealed class RangeAttribute : Attribute { public readonly float min, max; public RangeAttribute(float a, float b) { min = a; max = b; } }
+    [AttributeUsage(AttributeTargets.Field)] public sealed class MinAttribute : Attribute { public readonly float min; public MinAttribute(float a) { min = a; } }
     [AttributeUsage(AttributeTargets.Class)] public sealed class ExecuteAlways : Attribute { }
     [AttributeUsage(AttributeTargets.Class)] public sealed class DisallowMultipleComponent : Attribute { }
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)] public sealed class RequireComponent : Attribute { public RequireComponent(Type a, Type b = null) { } }

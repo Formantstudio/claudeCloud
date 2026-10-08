@@ -341,9 +341,9 @@ namespace PsychedelicLab.GeometryFX
             f.breath = animate ? 1f + .03f * breathing * Mathf.Sin(time * 1.7f) : 1f;
             if (builtMode == Mode.Manifold)
             {
-                f.wrapU = Manifolds.WrapsU(from) && Manifolds.WrapsU(to);
-                f.wrapV = Manifolds.WrapsV(from) && Manifolds.WrapsV(to);
-                f.inset = Manifolds.HasPoles(from) || Manifolds.HasPoles(to) ? .5f / builtRings : 0f;
+                f.wrapU = Manifolds.WrapsU(from, shape) && Manifolds.WrapsU(to, shape);
+                f.wrapV = Manifolds.WrapsV(from, shape) && Manifolds.WrapsV(to, shape);
+                f.inset = Manifolds.HasPoles(from, shape) || Manifolds.HasPoles(to, shape) ? .5f / builtRings : 0f;
                 shape.radius = radius;
                 shape.extent = length;
             }
@@ -407,14 +407,13 @@ namespace PsychedelicLab.GeometryFX
             while (k < vertices.Length) vertices[k++] = Vector3.zero;
         }
 
-        // A wrapping axis divides by the cell count so the last column lands back on the first.
-        // A non-wrapping one divides by (count - 1) so the grid reaches the far edge exactly.
-        float UParam(int i, bool wrap) => wrap ? (float)i / builtSides : (float)i / Mathf.Max(builtSides - 1, 1);
-        float VParam(int j, bool wrap, float inset)
-        {
-            float t = wrap ? (float)j / builtRings : (float)j / Mathf.Max(builtRings - 1, 1);
-            return Mathf.Lerp(inset, 1f - inset, t);
-        }
+        // `count` quads span [0, 1] in count + 1 lattice lines, so line i sits at i / count on either
+        // kind of axis: a wrapping one lands its last line back on the first, an open one ends exactly
+        // on the far edge. (Open axes used i / (count - 1), which put the last line past 1: an open
+        // u-axis drew one column of extrapolated surface beyond its domain, and an open v-axis, whose
+        // Lerp clamps, drew a final row of zero-area quads — the flicker the pole inset exists to avoid.)
+        float UParam(int i, bool wrap) => (float)i / builtSides;
+        float VParam(int j, bool wrap, float inset) => Mathf.Lerp(inset, 1f - inset, (float)j / builtRings);
 
         Vector3 Grid(float u, float v, ref Frame f, int patch)
         {
