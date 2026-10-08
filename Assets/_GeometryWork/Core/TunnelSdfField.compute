@@ -1,0 +1,39 @@
+// Bakes a hollow, ribbed tube signed-distance field for the Shapes FlowPath tunnels.
+// Same storage convention as GeometryMorph.compute: the texture spans the owning
+// transform's local unit cube and holds distance divided by the cube side, so the
+// SDF particle graph reads it exactly the way it reads the morphing sculpture.
+#pragma kernel Bake
+
+RWTexture3D<float> _Out;
+float4 _Config; // x resolution, y cube side, z time, w twist per unit along the axis
+float4 _Tube;   // x radius, y wall thickness, z half length, w ring depth
+float4 _Rib;    // x ring frequency, y flute count, z flute depth, w axis (0 = X, 1 = Y, 2 = Z)
+
+[numthreads(8,8,8)]
+void Bake(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id >= (uint)_Config.x)) return;
+
+    float side = max(_Config.y, 1e-5);
+    float3 p = ((id + .5) / _Config.x - .5) * side;
+
+    // Swizzle so the tube always runs down z.
+    int axis = (int)_Rib.w;
+    float3 q = axis == 0 ? float3(p.y, p.z, p.x) : (axis == 1 ? float3(p.z, p.x, p.y) : p);
+
+    float angle = _Config.w * q.z + _Config.z * .15;
+    float s = sin(angle), c = cos(angle);
+    q.xy = float2(c * q.x - s * q.y, s * q.x + c * q.y);
+
+    float r = length(q.xy);
+    float theta = atan2(q.y, q.x);
+    float radius = _Tube.x
+                 * (1 + _Tube.w * sin(q.z * _Rib.x + _Config.z * .6))
+                 * (1 + _Rib.z * cos(theta * max(_Rib.y, 0)));
+
+    float wall = abs(r - radius) - _Tube.y;
+    float caps = abs(q.z) - _Tube.z;
+    float d = max(wall, caps);
+
+    _Out[id] = d / side;
+}

@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Wire_Klein_Violet
+  m_Shader: {fileID: 4800000, guid: 4b7e1c0a9d3f44a2b85c6e21f70d9a35, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _CellPixels: 24
+    - _EdgePixels: 1.7
+    - _EdgeWire: 1
+    - _Floor: 0.006
+    - _Flow: 0.12
+    - _Glow: 3
+    - _Hierarchy: 0.7
+    - _LatticeU: 2
+    - _LatticeV: 26
+    - _LineVariation: 0.5
+    - _LineWidth: 0.03
+    - _MinCellPixels: 4
+    - _NodeGlow: 1.1
+    - _Pulse: 1
+    - _PulseSpacing: 14
+    - _PulseSpeed: 0.35
+    - _Rim: 1.3
+    - _ScanTint: 0
+    - _Shade: 0.45
+    - _Sparkle: 1
+    - _SparkleSize: 0.18
+    - _SparkleSnap: 1
+    - _SparkleSparsity: 0.74
+    - _SparkleSpeed: 1.6
+    - _TriplanarScale: 4
+    - _WireOpacity: 0.5
+    - _WirePixels: 1.4
+    m_Colors:
+    - _SparkColor: {r: 0.62, g: 0.82, b: 1, a: 1}
+    - _UVScale: {r: 1, g: 1, b: 0, a: 0}
+    - _WireColor: {r: 0.62, g: 0.42, b: 0.98, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

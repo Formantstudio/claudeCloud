@@ -1,0 +1,177 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2049497604298914089
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4655691011641776279}
+  - component: {fileID: 8231942170493668821}
+  - component: {fileID: 3591981101268256459}
+  m_Layer: 0
+  m_Name: 3D - Five Seven Knot Engine
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4655691011641776279
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2049497604298914089}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8231942170493668821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2049497604298914089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81ef715856ab5f64ba5189f0462e663b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PsychedelicLab.GeometryFX.CurvedGeometryChamber
+  mode: 1
+  chamberMaterial: {fileID: 2100000, guid: 723ca72930fad59e947973df65f43a8e, type: 2}
+  worldGridScan: {fileID: 0}
+  bridge: {fileID: 0}
+  flowpathRoot: {fileID: 0}
+  sides: 64
+  rings: 48
+  latticeDivisor: 3
+  hideQuadDiagonals: 0
+  radius: 3.8
+  length: 28
+  wireOpacity: 0.5
+  curvature: 3
+  horizontal: 0.12
+  vertical: 0.08
+  animate: 0
+  breathing: 1.2
+  cycleSeconds: 24
+  from: 5
+  to: 5
+  morph: 0
+  autoCycle: 0
+  secondsPerShape: 12
+  transitionFraction: 0.4
+  shape:
+    radius: 1.4
+    extent: 3
+    minorRadius: 0.5
+    halfTwists: 1
+    bandWidth: 0.6
+    squareness: 0.4
+    roundness: 0.4
+    knotP: 5
+    knotQ: 7
+    tubeRadius: 0.18
+    pitch: 0.55
+    turns: 3
+    superM: {x: 7, y: 5}
+    superN: {x: 0.55, y: 1.7, z: 1.7}
+    useSharedAxis: 1
+    projection: 0
+    cell: 3
+    cellFill: 1
+    wDistance: 2.2
+    simpleRates: {x: 0.12, y: 0.12}
+    mixedRates: {x: 0, y: 0}
+    scale4D: 2.6
+  manifoldSpin: 0.035
+  quinticDegree: 5
+  projectionAngle: 0.7854
+  animateProjectionAngle: 1
+  projectionAngleSpeed: 0.08
+  calabiScale: 2.4
+  kaleido:
+    sectors: 0
+    strength: 1
+    offset: 0
+    spin: 0
+    axis: 2
+    planeFolds: 0
+    foldScale: 1.6
+    foldOffset: {x: 0.6, y: 0.3, z: 0}
+    foldNormal: {x: 0.577, y: 0.577, z: 0.577}
+    radialMirror: 0
+    lengthRepeat: 0
+    foldW: 0
+  accordion:
+    accordion: 0.65
+    bellows: 4
+    extend: 1
+    octaves: 2
+    gain: 0.5
+    extendMin: 0.25
+    cantorSpacing: 0.6
+    cantorDepth: 4
+    cantorRatio: 0.34
+    profileA: 0
+    profileB: 3
+    profileMorph: 0.35
+    profileMorphAlong: 0.6
+    polygonSides: 6
+    superellipseN: 4
+    starPoints: 7
+    starDepth: 0.28
+    fractalOut: 0.5
+    fractalDepth: 5
+    fractalBaseFrequency: 5
+    fractalLacunarity: 2.3
+    fractalGain: 0.62
+    fractalAmplitude: 0.3
+    fractalTwistAlong: 0.35
+    bandFraction: 0.45
+    connectors: 8
+    connectorWidth: 0.18
+    breathe: 1
+    spin: 0.15
+--- !u!114 &3591981101268256459
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2049497604298914089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d71fa05cb624e8197b6a24e05c8731d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PsychedelicLab.GeometryFX.WireParticleSwarm
+  chamber: {fileID: 8231942170493668821}
+  comboChamber: {fileID: 0}
+  particlePrefab: {fileID: 5163611623574484261, guid: 57343f51e5d76064db74a915614649e0, type: 3}
+  particleMaterial: {fileID: 2100000, guid: d273864d30211a01d0bc42c4d3965bb5, type: 2}
+  nodesU: 40
+  nodesV: 32
+  travellersPerLine: 6
+  maxParticles: 12000
+  fractalLevels: 1
+  clusterSpread: 0.7
+  clusterRatio: 0.42
+  childSizeFalloff: 0.62
+  nodeSize: 0.026
+  travellerSize: 0.012
+  cyan: {r: 0.3, g: 0.5379999, b: 1, a: 1}
+  gold: {r: 1, g: 0.55, b: 0.13, a: 0.8}
+  flow: 0.18
+  scatter: 0
+  assembleOnPlay: 0
+  regroupSpeed: 5
+  freeRadius: 3
+  previewInEditor: 1

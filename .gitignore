@@ -1,0 +1,17 @@
+# Unity / General gitignore
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uildUrl/
+/[Ff]ileVisualState.prefs
+.vs/
+.idea/
+*.user
+*.userprefs
+*.pidb
+*.suo
+*.sln.docstates
+*.DS_Store
+Thumbs.db

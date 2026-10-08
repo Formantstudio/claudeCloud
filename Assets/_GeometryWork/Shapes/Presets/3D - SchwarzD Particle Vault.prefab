@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7783147899503588018
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8407967840755437586}
+  - component: {fileID: 6451964202756139619}
+  - component: {fileID: 2639720671939775793}
+  m_Layer: 0
+  m_Name: 3D - SchwarzD Particle Vault
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8407967840755437586
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7783147899503588018}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6451964202756139619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7783147899503588018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0530387512c924556405151ce4ebf864, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PsychedelicLab.GeometryFX.ImplicitSurfaceChamber
+  wireMaterial: {fileID: 2100000, guid: 6aa7bbe75e8b8da6d8ec6a2ae32997a1, type: 2}
+  worldGridScan: {fileID: 0}
+  bridge: {fileID: 0}
+  field:
+    shape: 2
+    level: 0
+    thickness: 0
+    frequency: 2.3
+    power: 8
+    iterations: 7
+    boxScale: -1.75
+    minRadius: 0.5
+    fixedRadius: 1
+    folds: 3
+    barthW: 1
+  resolution: 32
+  extent: 1.8
+  hideQuadDiagonals: 1
+  wireOpacity: 0.5
+  latticeDivisor: 3
+  animate: 0
+  rebuildInterval: 0.25
+  levelDrift: 0.35
+  spin: 0.05
+--- !u!114 &2639720671939775793
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7783147899503588018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d71fa05cb624e8197b6a24e05c8731d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PsychedelicLab.GeometryFX.WireParticleSwarm
+  chamber: {fileID: 0}
+  comboChamber: {fileID: 0}
+  particlePrefab: {fileID: 5163611623574484261, guid: 57343f51e5d76064db74a915614649e0, type: 3}
+  particleMaterial: {fileID: 2100000, guid: d273864d30211a01d0bc42c4d3965bb5, type: 2}
+  nodesU: 40
+  nodesV: 32
+  travellersPerLine: 6
+  maxParticles: 12000
+  fractalLevels: 1
+  clusterSpread: 0.7
+  clusterRatio: 0.42
+  childSizeFalloff: 0.62
+  nodeSize: 0.026
+  travellerSize: 0.012
+  cyan: {r: 0.60800004, g: 0.3, b: 1, a: 1}
+  gold: {r: 1, g: 0.55, b: 0.13, a: 0.8}
+  flow: 0.18
+  scatter: 0
+  assembleOnPlay: 0
+  regroupSpeed: 5
+  freeRadius: 3
+  previewInEditor: 1

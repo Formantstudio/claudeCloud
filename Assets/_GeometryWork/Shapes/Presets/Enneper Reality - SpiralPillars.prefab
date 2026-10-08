@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4116283261438855897
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7505120939362863340}
+  - component: {fileID: 4973777386949777301}
+  m_Layer: 0
+  m_Name: Enneper Reality - SpiralPillars
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &7505120939362863340
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4116283261438855897}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 7.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4973777386949777301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4116283261438855897}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19a56ee8464dc4643b4296bf6cefbde4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PsychedelicLab.GeometryFX.EnneperFoldReality
+  arrangement: 2
+  copiesPerLevel: 1
+  levels: 1
+  recursiveScale: 0.87
+  foldSize: 6
+  spread: 3.5
+  depthSpacing: 3
+  levelTwist: 30
+  foldTilt: 45
+  pillarStretch: 1
+  framingCamera: {fileID: 0}
+  framingDistance: 7.2
+  viewFill: 1.08
+  pillarClosure: 1
+  waistRadius: 0.16
+  pillarHalfHeight: 0.9
+  endFlare: 2.1
+  foldFluting: 0.1
+  pillarTwist: 25
+  domain: 2
+  phaseDegrees: 0
+  phasePerLevel: 0
+  phasePerCopy: 0
+  animateFolds: 1
+  cycleSeconds: 24
+  foldSwing: 12
+  rotationDegreesPerSecond: 0
+  previewAnimation: 0
+  foldMaterial: {fileID: 2100000, guid: ecc839de3a1e0a40f2e5c4f1c046f3ea, type: 2}
+  worldGridScan: {fileID: 0}
+  bridge: {fileID: 0}
+  resolution: 180
+  latticeDivisor: 3
+  hideQuadDiagonals: 0
+  surfaceCellBudget: 131072
+  wireOpacity: 0.599
+  particleLayer: 0
+  particlePrefab: {fileID: 5163611623574484261, guid: 57343f51e5d76064db74a915614649e0, type: 3}
+  particleMaterial: {fileID: 2100000, guid: d273864d30211a01d0bc42c4d3965bb5, type: 2}
+  totalParticleBudget: 6000

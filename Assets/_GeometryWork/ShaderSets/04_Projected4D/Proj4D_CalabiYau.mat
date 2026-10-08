@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Proj4D_CalabiYau
+  m_Shader: {fileID: 4800000, guid: d020e414dc7c38f7b68299de2b41ff08, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords:
+  - _GRIDSPACE_TRIPLANAR
+  - _WCHANNEL_VERTEX
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _ActivationBoost: 1
+    - _ActivationFloor: 1
+    - _BaryWidth: 1.25
+    - _Floor: 0.006
+    - _Flow: 0
+    - _Glow: 2.5
+    - _GridSpace: 1
+    - _LatticeU: 24
+    - _LatticeV: 24
+    - _LinePixels: 1.05
+    - _MinCellPixels: 4
+    - _PlanarSharpness: 8
+    - _ScanTint: 0.5
+    - _Sparkle: 1
+    - _SparkleSize: 0.18
+    - _SparkleSnap: 1
+    - _SparkleSparsity: 0.7
+    - _SparkleSpeed: 1.6
+    - _WBands: 5
+    - _WChannel: 1
+    - _WFade: 0.55
+    - _WOutside: 0.08
+    - _WRange: 1.0
+    - _WSlice: 0
+    - _WSliceOn: 0
+    - _WSliceSoft: 0.35
+    - _WSliceWidth: 0.5
+    - _WireOpacity: 0.55
+    - _WorldCellSize: 0.34
+    m_Colors:
+    - _SparkColor: {r: 1, g: 0.92, b: 0.7, a: 1}
+    - _UVScale: {r: 1, g: 1, b: 0, a: 0}
+    - _WFarColor: {r: 0.95, g: 0.35, b: 0.45, a: 1}
+    - _WNearColor: {r: 1, g: 0.92, b: 0.7, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

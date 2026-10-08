@@ -1,0 +1,25 @@
+#pragma kernel NoiseFieldGenerator
+
+#include "Packages/jp.keijiro.noiseshader/Shader/SimplexNoise3D.hlsl"
+
+uint3 Dims;
+float Scale;
+float Time;
+RWStructuredBuffer<float> Voxels;
+
+[numthreads(8, 8, 8)]
+void NoiseFieldGenerator(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id >= Dims)) return;
+
+    float3 p = Scale * (id + 0.5 - Dims / 2);
+    float radius = length(p);
+    float n0 = SimplexNoise(p * 2.2 + float3(0.11, 0.17, 0.07) * Time);
+    float n1 = SimplexNoise(p * 4.4 - float3(0.09, 0.05, 0.13) * Time);
+    float ridges = abs(n0 + 0.32 * n1);
+    float petals = cos(atan2(p.z, p.x) * 9.0 + p.y * 3.2 + Time * 0.24);
+    float surface = 1.16 + 0.34 * ridges + 0.12 * petals;
+
+    // Negative inside, positive outside. MarchingCubes reconstructs the zero isosurface.
+    Voxels[id.x + Dims.x * (id.y + Dims.y * id.z)] = radius - surface;
+}

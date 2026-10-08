@@ -1,0 +1,203 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &57086732522926318
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5179964907561286928}
+  - component: {fileID: 6823470694058487945}
+  - component: {fileID: 8530808388865565609}
+  - component: {fileID: 4725258621396647341}
+  m_Layer: 0
+  m_Name: 3D - Marching ThreeAxisCoredBall
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5179964907561286928
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57086732522926318}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7562454235480812329}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &6823470694058487945
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57086732522926318}
+  m_Mesh: {fileID: 0}
+--- !u!23 &8530808388865565609
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57086732522926318}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 004e2b6e558259146af4f443d45791f2, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &4725258621396647341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57086732522926318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e14cbf4654eb8941aeb6618cf3b0fa7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PsychedelicLab.Shapes4D.ArsenalFieldSurface
+  form: 1
+  fieldShader: {fileID: 7200000, guid: 77fbe69323798db45bd4d5ff68ccbd79, type: 3}
+  marchingShader: {fileID: 7200000, guid: 785734f72c85c9f4f83310b4ac4048e1, type: 3}
+  resolution: 48
+  triangleBudget: 90000
+  halfExtent: 2.7
+  thickness: 0.2
+  animationSpeed: 0.35
+  useShared4DAxis: 1
+--- !u!1 &3067931452186778102
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7562454235480812329}
+  - component: {fileID: 1045521187441123124}
+  m_Layer: 0
+  m_Name: Polyhedral particle corona
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7562454235480812329
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3067931452186778102}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5179964907561286928}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1045521187441123124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3067931452186778102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b581b9dd175787f3565d0cd54698669e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PsychedelicLab.GeometryFX.PolyhedronSwarm
+  particlePrefab: {fileID: 5163611623574484261, guid: 57343f51e5d76064db74a915614649e0, type: 3}
+  particleMaterial: {fileID: 2100000, guid: d273864d30211a01d0bc42c4d3965bb5, type: 2}
+  particleSolid: 1
+  autoDensity: 1
+  targetParticles: 4500
+  particlesPerEdge: 2
+  strands: 1
+  strandRadius: 0.035
+  strandTwist: 1
+  maxParticles: 6000
+  fractalLevels: 1
+  clusterSpread: 0.06
+  clusterRatio: 0.42
+  childSizeFalloff: 0.62
+  scatter: 0
+  breatheSwarm: 1
+  assembleOnPlay: 0
+  regroupSpeed: 5
+  freeRadius: 1.8
+  vertexParticleSize: 0.025
+  edgeParticleSize: 0.01
+  edgeFlow: 0.09
+  cyan: {r: 0.3629997, g: 0.35000002, b: 1, a: 1}
+  gold: {r: 0.7770499, g: 0.54499996, b: 0.48000002, a: 1}
+  twist: 0
+  vortex: 0
+  inversion: 0
+  spherize: 0
+  swirlAxis: {x: 0, y: 0, z: 1}
+  swirlSpin: 0
+  radius: 1.8
+  previewInEditor: 1
+  accentColour: 0.85
+  accentSize: 0.7
+  solid: 4
+  prismSides: 6
+  prismHeight: 1.4
+  johnsonIndex: 0
+  weldVertices: 1
+  weldDistance: 0.001
+  spherizeSolid: 0
+  spinX: 0.06
+  spinY: 0.11
+  spinZ: 0

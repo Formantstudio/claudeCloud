@@ -1,0 +1,60 @@
+#pragma kernel Bake
+RWTexture3D<float> _Out;
+float4 _Planes[32];
+float4 _Config; // resolution, half extent, blend, twist
+int _From, _To, _Depth;
+float _TimeValue;
+
+float poly(float3 p, int start, int count)
+{
+    float d = -100;
+    for (int i = start; i < start + count; i++) d = max(d, dot(p, _Planes[i].xyz) - _Planes[i].w);
+    return d;
+}
+float field(float3 p, int shape)
+{
+    if (shape == 6)
+    {
+        // Twelve rounded cube edges enclosing a pair of nested, opposing tetrahedra.
+        float3 q=abs(p)-.78;
+        float frame=min(length(float2(q.x,q.y))+max(q.z,0),min(length(float2(q.x,q.z))+max(q.y,0),length(float2(q.y,q.z))+max(q.x,0)))-.045;
+        float star=min(poly(p/.72,0,4),poly(-p/.72,0,4))*.72;
+        float shell=abs(star)-.025;
+        return min(frame,shell);
+    }
+    if (shape == 0) return poly(p, 0, 4);
+    if (shape == 1) return min(poly(p, 0, 4), poly(-p, 0, 4));
+    if (shape == 2) return poly(p, 4, 12);
+    if (shape == 3)
+    {
+        float scale = 1;
+        for (int i = 0; i < _Depth; i++)
+        {
+            if (p.x + p.y < 0) p.xy = -p.yx;
+            if (p.x + p.z < 0) p.xz = -p.zx;
+            if (p.y + p.z < 0) p.yz = -p.zy;
+            p = p * 2 - 0.577350269;
+            scale *= 2;
+        }
+        return (length(p) - 0.8) / scale;
+    }
+    if (shape == 4)
+    {
+        float a = length(float2(length(p.xy) - .72, p.z)) - .095;
+        float b = length(float2(length(p.yz) - .72, p.x)) - .095;
+        float c = length(float2(length(p.xz) - .72, p.y)) - .095;
+        return min(a, min(b, c));
+    }
+    return poly(p, 16, 8);
+}
+[numthreads(8,8,8)]
+void Bake(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id >= (uint)_Config.x)) return;
+    float3 p = ((id + .5) / _Config.x * 2 - 1) * _Config.y;
+    float angle = _TimeValue * .12 + p.y * _Config.w;
+    float s = sin(angle), c = cos(angle);
+    p.xz = float2(c*p.x-s*p.z, s*p.x+c*p.z);
+    float d = lerp(field(p, _From), field(p, _To), _Config.z);
+    _Out[id] = d / (2 * _Config.y);
+}
