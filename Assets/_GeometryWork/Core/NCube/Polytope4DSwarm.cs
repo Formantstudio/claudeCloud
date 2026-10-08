@@ -57,18 +57,8 @@ namespace PsychedelicLab.GeometryFX
         Polytope builtPolytope;
         float builtTolerance;
 
-        static string Label(Polytope p)
-        {
-            switch (p)
-            {
-                case Polytope.Cell5: return "5-cell";
-                case Polytope.Cell8: return "8-cell";
-                case Polytope.Cell16: return "16-cell";
-                case Polytope.Cell24: return "24-cell";
-                case Polytope.Cell600: return "600-cell";
-                default: return "120-cell";
-            }
-        }
+        // Same order as RegularPolytope4D, so the cast is the mapping.
+        static string Label(Polytope p) => Polytope4DLibrary.Label((RegularPolytope4D)(int)p);
 
         protected override void BuildEdges(List<int> a, List<int> b)
         {

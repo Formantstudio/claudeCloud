@@ -140,9 +140,16 @@ largest real cost. New tests: particles land on the wire's lattice nodes for eve
 
 ## P6 · Structure
 
-- [ ] **6.1** `KaleidoFold` axis permutation → `ScrewDislocation.ToAxis` (one implementation).
-- [ ] **6.2** `Polytope4DSwarm.Label` and `GeometryFractalEngine` read `Polytope4DLibrary` directly.
-- [ ] **6.3** Sweep the CoreTests build for warnings worth fixing.
+- [x] **6.1** `KaleidoFold` axis permutation → `ScrewDislocation.ToAxis` (one implementation).
+- [x] **6.2** `Polytope4DSwarm.Label` and `GeometryFractalEngine` read `Polytope4DLibrary` directly.
+- [x] **6.3** Sweep the CoreTests build for warnings worth fixing.
+
+**P6 result.** KaleidoFold and Polytope4DSwarm now call the one implementation each. CoreTests also
+compiles every `Core/NCube` swarm (GeometryFractalEngine included) and the polyhedronGenerator
+scripts they use, against particle stubs and a few new stand-in members (`Instantiate`,
+`Quaternion.FromToRotation` / `eulerAngles`, `Vector3.SignedAngle`, …), so edits there are compiler-
+checked; the stand-in's rotation maths has its own round-trip tests. With CS0414 / CS0169 / CS0067
+unsuppressed, our code raises no warnings (only two unused events in the studio stubs).
 
 ## P7 · GPU parity
 

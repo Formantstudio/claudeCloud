@@ -109,6 +109,13 @@ namespace UnityEngine
         public void Normalize() { this = normalized; }
         public static Vector3 Normalize(Vector3 v) => v.normalized;
         public static float Dot(Vector3 a, Vector3 b) => a.x * b.x + a.y * b.y + a.z * b.z;
+        public static float SignedAngle(Vector3 from, Vector3 to, Vector3 axis)
+        {
+            float m = (float)Math.Sqrt(from.sqrMagnitude * to.sqrMagnitude);
+            if (m < 1e-15f) return 0f;
+            float angle = (float)(Math.Acos(Math.Max(-1.0, Math.Min(1.0, Dot(from, to) / m))) * 180.0 / Math.PI);
+            return Dot(axis, Cross(from, to)) < 0f ? -angle : angle;
+        }
         public static Vector3 Cross(Vector3 a, Vector3 b) =>
             new Vector3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
         public static Vector3 Lerp(Vector3 a, Vector3 b, float t) { t = Mathf.Clamp01(t); return a + (b - a) * t; }
@@ -184,6 +191,19 @@ namespace UnityEngine
         public float x, y, z, w;
         public Quaternion(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; }
         public static Quaternion identity => new Quaternion(0, 0, 0, 1);
+        /// <summary>Unity's ZXY Euler order, in degrees, each in [0, 360).</summary>
+        public Vector3 eulerAngles
+        {
+            get
+            {
+                double sx = 2 * (w * x - y * z);
+                double ex = Math.Abs(sx) >= 1 ? Math.PI / 2 * Math.Sign(sx) : Math.Asin(sx);
+                double ey = Math.Atan2(2 * (w * y + x * z), 1 - 2 * (x * x + y * y));
+                double ez = Math.Atan2(2 * (w * z + x * y), 1 - 2 * (x * x + z * z));
+                float D(double r) { double d = r * 180 / Math.PI % 360; return (float)(d < 0 ? d + 360 : d); }
+                return new Vector3(D(ex), D(ey), D(ez));
+            }
+        }
         public static Quaternion Inverse(Quaternion q) => new Quaternion(-q.x, -q.y, -q.z, q.w);
         public static Quaternion AngleAxis(float deg, Vector3 axis)
         {
@@ -191,6 +211,21 @@ namespace UnityEngine
             return new Quaternion(axis.x * s, axis.y * s, axis.z * s, Mathf.Cos(h));
         }
         public static Quaternion Euler(Vector3 e) => Euler(e.x, e.y, e.z);
+        public static Quaternion FromToRotation(Vector3 from, Vector3 to)
+        {
+            Vector3 a = from.normalized, b = to.normalized;
+            float d = Vector3.Dot(a, b);
+            if (d < -.999999f)
+            {
+                Vector3 axis = Vector3.Cross(Vector3.right, a);
+                if (axis.sqrMagnitude < 1e-6f) axis = Vector3.Cross(Vector3.up, a);
+                return AngleAxis(180f, axis.normalized);
+            }
+            Vector3 c = Vector3.Cross(a, b);
+            var q = new Quaternion(c.x, c.y, c.z, 1f + d);
+            float m = (float)Math.Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+            return new Quaternion(q.x / m, q.y / m, q.z / m, q.w / m);
+        }
         public static Quaternion Euler(float x, float y, float z) =>
             AngleAxis(y, Vector3.up) * AngleAxis(x, Vector3.right) * AngleAxis(z, Vector3.forward);
         public static Quaternion operator *(Quaternion a, Quaternion b) => new Quaternion(
@@ -266,6 +301,17 @@ namespace UnityEngine
         public static float value => (float)rng.NextDouble();
         public static float Range(float a, float b) => a + (b - a) * value;
         public static int Range(int a, int b) => rng.Next(a, b);
+        public static Vector3 insideUnitSphere
+        {
+            get
+            {
+                while (true)
+                {
+                    var p = new Vector3(Range(-1f, 1f), Range(-1f, 1f), Range(-1f, 1f));
+                    if (p.sqrMagnitude <= 1f) return p;
+                }
+            }
+        }
     }
 
     public class Object
@@ -276,6 +322,8 @@ namespace UnityEngine
         public static void Destroy(Object o) { }
         public static T FindFirstObjectByType<T>() where T : Object => null;
         public static void DestroyImmediate(Object o) { }
+        public static T Instantiate<T>(T original) where T : Object => original;
+        public static T Instantiate<T>(T original, Transform parent) where T : Object => original;
     }
 
     [Flags] public enum HideFlags { None = 0, HideAndDontSave = 61, DontSave = 52 }
@@ -287,6 +335,9 @@ namespace UnityEngine
         public Vector3[] vertices = Array.Empty<Vector3>();
         public Vector3[] normals = Array.Empty<Vector3>();
         public Vector2[] uv = Array.Empty<Vector2>();
+        public Vector2[] uv2 = Array.Empty<Vector2>();
+        public Vector4[] tangents = Array.Empty<Vector4>();
+        public int vertexCount => vertices.Length;
         public int[] triangles = Array.Empty<int>();
         public readonly Dictionary<int, List<Vector3>> uvChannels3 = new Dictionary<int, List<Vector3>>();
         public readonly Dictionary<int, List<Vector2>> uvChannels2 = new Dictionary<int, List<Vector2>>();
@@ -303,6 +354,9 @@ namespace UnityEngine
         public void SetTriangles(List<int> t, int sub) { triangles = t.ToArray(); }
         public void SetTriangles(int[] t, int sub) { triangles = (int[])t.Clone(); }
         public void SetIndices(int[] t, MeshTopology topo, int sub) { triangles = (int[])t.Clone(); }
+        public int subMeshCount = 1;
+        public void SetTangents(List<Vector4> t) { }
+        public void SetTangents(Vector4[] t) { }
         public void RecalculateNormals() { }
         public void RecalculateBounds() { }
     }
@@ -337,6 +391,7 @@ namespace UnityEngine
         public bool activeSelf = true;
         public void SetActive(bool a) { activeSelf = a; }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class => new T[0];
+        public T GetComponent<T>() where T : class => null;
         public T AddComponent<T>() where T : Component { var c = Activator.CreateInstance<T>(); c.gameObject = this; c.transform = transform; c.name = name; return c; }
     }
     public class MeshFilter : Component { public Mesh sharedMesh; }
@@ -371,6 +426,9 @@ namespace UnityEngine
     {
         public static void Log(object o) => Console.WriteLine(o);
         public static void LogWarning(object o) => Console.WriteLine("WARN " + o);
+        public static void LogWarning(object o, Object context) => Console.WriteLine("WARN " + o);
+        public static void LogError(object o) => Console.WriteLine("ERROR " + o);
+        public static void LogError(object o, Object context) => Console.WriteLine("ERROR " + o);
         public static void Assert(bool c, string m = "") { if (!c) throw new Exception("Assert: " + m); }
     }
 

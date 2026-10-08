@@ -65,8 +65,9 @@ namespace PsychedelicLab.GeometryFX
         {
             if (k == null || !k.Any) return p;
 
-            // Work with the fold axis as Z, then put it back.
-            Vector3 q = ToLocal(k.axis, p);
+            // Work with the fold axis as Z, then put it back (the same permutation the screw
+            // dislocation uses).
+            Vector3 q = ScrewDislocation.ToAxis(p, k.axis);
 
             if (k.sectors > 1 && k.strength > 0f)
             {
@@ -95,7 +96,7 @@ namespace PsychedelicLab.GeometryFX
                 q.z = (t < period ? t : period * 2f - t) - period * .5f;
             }
 
-            p = FromLocal(k.axis, q);
+            p = ScrewDislocation.FromAxis(q, k.axis);
 
             if (k.planeFolds > 0)
             {
@@ -120,26 +121,6 @@ namespace PsychedelicLab.GeometryFX
             if (k == null) return v;
             if (k.foldW) v.w = Mathf.Abs(v.w);
             return v;
-        }
-
-        static Vector3 ToLocal(Axis3 axis, Vector3 p)
-        {
-            switch (axis)
-            {
-                case Axis3.X: return new Vector3(p.y, p.z, p.x);
-                case Axis3.Y: return new Vector3(p.z, p.x, p.y);
-                default: return p;
-            }
-        }
-
-        static Vector3 FromLocal(Axis3 axis, Vector3 q)
-        {
-            switch (axis)
-            {
-                case Axis3.X: return new Vector3(q.z, q.x, q.y);
-                case Axis3.Y: return new Vector3(q.y, q.z, q.x);
-                default: return q;
-            }
         }
 
         /// <summary>Sector counts that suit a given shape, for the roller to pick from.</summary>

@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    Compiles the studio-facing geometry code (chamber, manifolds, Enneper and Scherk engines,
-    hyperspace, Escher fields and rooms) together with the engine, against the UnityEngine stand-in
-    plus stubs for the studio packages that are not in this repository (Curved World, the control
-    rig, the particle swarm). Catches compile breaks across the assembly boundary and runs the
+    Compiles the studio-facing geometry code (chamber, combo chamber, manifolds, Enneper and Scherk
+    engines, the NCube swarms and the polyhedronGenerator scripts they use, hyperspace, Escher fields
+    and rooms) together with the engine, against the UnityEngine stand-in plus stubs for the studio
+    packages that are not in this repository (Curved World, the control rig, the particle swarm) and
+    for UnityEngine's particle API. Catches compile breaks across the assembly boundary and runs the
     behaviour tests that need those files:
 
       dotnet test Tools/CoreTests
@@ -18,7 +19,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(R)/_GeometryWork/Engine/**/*.cs" Exclude="$(R)/_GeometryWork/Engine/Editor/**/*.cs;$(R)/_GeometryWork/Engine/Tests/**/*.cs" />
-    <Compile Include="$(R)/_GeometryWork/Core/ManifoldSurfaces.cs;$(R)/_GeometryWork/Core/CurvedGeometryChamber.cs;$(R)/_GeometryWork/Core/AccordionSettings.cs;$(R)/_GeometryWork/Core/RingFractal.cs;$(R)/_GeometryWork/Core/RingGeometry.cs;$(R)/_GeometryWork/Core/ImplicitSurfaceChamber.cs;$(R)/_GeometryWork/Core/ManifoldComboChamber.cs;$(R)/_GeometryWork/Core/ManifoldVertexGrid.cs" />
+    <Compile Include="$(R)/_GeometryWork/Core/ManifoldSurfaces.cs;$(R)/_GeometryWork/Core/CurvedGeometryChamber.cs;$(R)/_GeometryWork/Core/AccordionSettings.cs;$(R)/_GeometryWork/Core/RingFractal.cs;$(R)/_GeometryWork/Core/RingGeometry.cs;$(R)/_GeometryWork/Core/ImplicitSurfaceChamber.cs;$(R)/_GeometryWork/Core/ManifoldComboChamber.cs;$(R)/_GeometryWork/Core/ManifoldVertexGrid.cs;$(R)/_GeometryWork/Core/NCube/*.cs;$(R)/polyhedronGenerator/scripts/**/*.cs" Exclude="$(R)/polyhedronGenerator/scripts/PolyhedronGenerator.cs;$(R)/polyhedronGenerator/scripts/WireFrameMeshGenerator.cs" />
     <Compile Include="$(R)/_EscherWorldManagement/Hyperspace/Hyper4DField.cs;$(R)/_EscherWorldManagement/Hyperspace/KaleidoFold.cs;$(R)/_EscherWorldManagement/Hyperspace/Hyperspace4DAxis.cs" />
     <Compile Include="$(R)/_EscherWorldManagement/Rooms/EscherFields.cs;$(R)/_EscherWorldManagement/Rooms/EscherRoom.cs;$(R)/_EscherWorldManagement/Rooms/EscherSurfaceBuilder.cs;$(R)/_EscherWorldManagement/Rooms/EscherMarchingTable.cs" />
     <Compile Include="$(R)/_GeometryWork/Shapes/EnneperFoldReality.cs;$(R)/_GeometryWork/Shapes/ScherkTowerEngine.cs" />

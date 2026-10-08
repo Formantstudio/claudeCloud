@@ -458,7 +458,7 @@ namespace PsychedelicLab.GeometryFX
 
         // Reuses the swarm's own generator, so there is one definition of each polytope.
         static Vector4[] Polytope4DVertices(Polytope4DSwarm.Polytope kind) =>
-            Polytope4DSwarm.VerticesFor(kind);
+            Polytope4DLibrary.Vertices((RegularPolytope4D)(int)kind);
 
         static void FromVectors(ShapeSource s, Vector4[] verts, List<float[]> points, List<int> edges)
         {
@@ -563,7 +563,7 @@ namespace PsychedelicLab.GeometryFX
         /// </summary>
         static void Metatron4D(ShapeSource s, List<float[]> points, List<int> edges)
         {
-            foreach (var v in Polytope4DSwarm.VerticesFor(Polytope4DSwarm.Polytope.Cell24))
+            foreach (var v in Polytope4DLibrary.Vertices(RegularPolytope4D.Cell24))
             {
                 float m = ((Vector4)v).magnitude;
                 points.Add(m > 1e-6f ? new[] { v.x / m, v.y / m, v.z / m, v.w / m }
