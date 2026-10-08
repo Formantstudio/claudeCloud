@@ -343,7 +343,10 @@ namespace PsychedelicLab.GeometryFX
             {
                 f.wrapU = Manifolds.WrapsU(from, shape) && Manifolds.WrapsU(to, shape);
                 f.wrapV = Manifolds.WrapsV(from, shape) && Manifolds.WrapsV(to, shape);
-                f.inset = Manifolds.HasPoles(from, shape) || Manifolds.HasPoles(to, shape) ? .5f / builtRings : 0f;
+                // A deformation that replaces the surface never sees the base surface's poles, and it
+                // chooses its own rows (the Scherk lobes sit on row centres), so no inset then.
+                bool replaced = deformationReplacesSurface && surfaceDeformation != null;
+                f.inset = !replaced && (Manifolds.HasPoles(from, shape) || Manifolds.HasPoles(to, shape)) ? .5f / builtRings : 0f;
                 shape.radius = radius;
                 shape.extent = length;
             }

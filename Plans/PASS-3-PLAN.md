@@ -70,11 +70,29 @@ pinch, Whitney and Kuen pinch points) and on the 2:1 Roman, cross-cap and Henneb
 
 ## P3 · Scherk tower verification
 
-- [ ] **3.1 The exact-chart claim:** with neutral deformations every tower point satisfies
+- [x] **3.1 The exact-chart claim:** with neutral deformations every tower point satisfies
       sinh x · sinh y = sin z (in surface units).
-- [ ] **3.2 The hall claim:** points satisfy z = H·tanh(ln|cos x / cos y| / H); the hall is one
+- [x] **3.2 The hall claim:** points satisfy z = H·tanh(ln|cos x / cos y| / H); the hall is one
       continuous surface (no cracks between cells).
-- [ ] **3.3 Fix anything that does not hold.**
+- [x] **3.3 Fix anything that does not hold.**
+
+**P3 result.** Both laws hold on the emitted vertices (`Tools/CoreTests/Tests/ScherkBehaviour.cs`).
+What did not hold, now fixed:
+
+- *Exact lobes flickered.* With the waist hold off, every row on a waist collapsed to one point (zero-
+  area triangles). Rows now sit on row centres with a whole number per lobe, so none lands on a waist.
+- *The lobe chart is a sliver near each waist* (a fixed w-window covers less and less of the level
+  curve). New `TowerChart.Wings`: the closed form a + b = acosh(2|sin z| + cosh d), d = x − y, which at
+  a waist is exactly the two lines, sampled evenly. Four arm charts glue into one embedded, orientable
+  surface with χ = 1 − P for P half periods (derived and measured for P = 1, 3, 6, 11).
+- *Halls with an even column count* cut through the middle of their outer cells; the surface now
+  slides half a period (`HallPhase`) so a hall is always whole cells with walls at its edges.
+- *Hall and colonnade were built twice* with the default two branches (the hall ignores the branch),
+  doubling their cost and drawing every wire twice. Periodic arrangements now build one chart.
+- *Comment fixes:* x-walls go down (cos x → 0 gives ln → −∞), not up; the |cos x / cos y| hall is two
+  interleaved Scherk surfaces joined along the walls by the tanh compression, stated as such.
+- The chamber no longer applies a base surface's pole inset under a deformation that replaces it.
+
 
 ## P4 · Conway operator pipeline (plan §3.3)
 
