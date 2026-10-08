@@ -69,6 +69,8 @@ namespace PsychedelicLab.EscherWorld
         public RoomAxis dislocationAxis = RoomAxis.Y;
         [Tooltip("Radius inside which the shear eases off. A dislocation is singular on its own axis, so the core must be softened or the geometry tears along the spine.")]
         [Range(.01f, 2f)] public float dislocationCore = .25f;
+        [Tooltip("Sphere inversion, Droste spiral and the scrolling window — the same warps the geometry engine's implicit fields use.")]
+        public EscherSpace space = new EscherSpace();
 
         [Header("Recursive fields")]
         [Range(2f, 16f)] public float power = 8f;
@@ -116,7 +118,9 @@ namespace PsychedelicLab.EscherWorld
             // perspective, with the camera free — unlike a view-dependent shear or a hidden cut.
             //
             // Same defect that makes a crystal grow in a spiral.
-            if (s.dislocation != 0f) p = Dislocate(s, p);
+            if (s.dislocation != 0f || (s.space != null && s.space.Active))
+                p = EscherSpace.ToLattice(s.space, p, ScrewDislocation.TpmsPeriod(s.frequency), time,
+                                          (Axis3)(int)s.dislocationAxis, s.dislocation, s.dislocationCore);
 
             // Re-orient through the W planes before slicing. On a 4-D field this turns the
             // structure; on a 3-D one it is the only thing W does.
@@ -138,11 +142,13 @@ namespace PsychedelicLab.EscherWorld
 
             switch (s.field)
             {
-                // 4-D Schwarz P: the same alternating sum with a fourth term.
+                // 4-D Schwarz P: the same sum with a fourth term. The term is cos(w) - 1, not
+                // cos(w): it has to vanish at W = 0, or the W = 0 room is the level -1 surface
+                // rather than Schwarz P (which it was until the engine cross-check caught it).
                 case RoomField.SchwarzP:
                 {
                     Vector3 q = p * k;
-                    return Mathf.Cos(q.x) + Mathf.Cos(q.y) + Mathf.Cos(q.z) + Mathf.Cos(qw);
+                    return Mathf.Cos(q.x) + Mathf.Cos(q.y) + Mathf.Cos(q.z) + (Mathf.Cos(qw) - 1f);
                 }
                 case RoomField.SchwarzD:
                 {
@@ -157,7 +163,8 @@ namespace PsychedelicLab.EscherWorld
                 {
                     Vector3 q = p * k;
                     float cx = Mathf.Cos(q.x), cy = Mathf.Cos(q.y), cz = Mathf.Cos(q.z), cw = Mathf.Cos(qw);
-                    return 3f * (cx + cy + cz + cw) + 4f * cx * cy * cz * cw;
+                    // 4-D Neovius, shifted by -3 so it is exactly the 3-D Neovius at W = 0.
+                    return 3f * (cx + cy + cz + cw) + 4f * cx * cy * cz * cw - 3f;
                 }
                 case RoomField.Lidinoid:
                 {
@@ -283,19 +290,20 @@ namespace PsychedelicLab.EscherWorld
                 }
 
                 // The gyroid, in four dimensions. The 3-D form is the cyclic sum
-                // sin x cos y + sin y cos z + sin z cos x; extending the cycle through W gives
-                // sin x cos y + sin y cos z + sin z cos w + sin w cos x, which is still triply
-                // periodic in every 3-D slice and still splits space into two interpenetrating
-                // labyrinths — but a different pair for every W. That one extra term is what makes
-                // the whole portal idea work.
+                // sin x cos y + sin y cos z + sin z cos x; W shifts the phase of the closing term,
+                // which is still triply periodic in every 3-D slice and still splits space into two
+                // interpenetrating labyrinths — but a different pair for every W, and exactly the
+                // gyroid at W = 0. That one phase is what makes the whole portal idea work.
                 default:
                 {
+                    // W enters as a phase on the closing term, sin z cos(x + w): at W = 0 this is
+                    // exactly the gyroid sin x cos y + sin y cos z + sin z cos x, and every other W
+                    // is a different pair of labyrinths. The earlier form, sin z cos w + sin w cos x,
+                    // was not a gyroid at any W.
                     Vector3 q = p * k;
-                    float sw = Mathf.Sin(qw), cw = Mathf.Cos(qw);
                     return Mathf.Sin(q.x) * Mathf.Cos(q.y)
                          + Mathf.Sin(q.y) * Mathf.Cos(q.z)
-                         + Mathf.Sin(q.z) * cw
-                         + sw * Mathf.Cos(q.x);
+                         + Mathf.Sin(q.z) * Mathf.Cos(q.x + qw);
                 }
             }
         }

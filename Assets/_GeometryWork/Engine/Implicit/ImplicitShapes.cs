@@ -45,6 +45,8 @@ namespace PsychedelicLab.GeometryFX
         public Axis3 dislocationAxis = Axis3.Z;
         [Tooltip("Radius (in field units, the box is -1..1) inside which the shear eases off, so the axis does not tear.")]
         [Range(.01f, 1f)] public float dislocationCore = .15f;
+        [Tooltip("Sphere inversion, Droste spiral and the scrolling window. Shared with the Escher rooms.")]
+        public EscherSpace space = new EscherSpace();
 
         [Header("Fractals")]
         [Tooltip("Mandelbulb power. 8 is the classic; animating it is the most striking thing it does.")]
@@ -72,12 +74,12 @@ namespace PsychedelicLab.GeometryFX
         /// </summary>
         public static float Field(ImplicitSettings s, Vector3 p, float time)
         {
-            // The screw dislocation goes first, with the lattice's true period (the TPMS are
-            // evaluated at π·frequency·p, so they repeat every 2 / frequency), so whole-number
-            // dislocations close without a seam.
-            if (s.dislocation != 0f)
-                p = ScrewDislocation.Apply(p, s.dislocationAxis, s.dislocation,
-                                           ScrewDislocation.TpmsPeriod(s.frequency), s.dislocationCore);
+            // The Escher warps go first (EscherSpace: inversion, Droste, screw dislocation, scroll),
+            // with the lattice's true period — the TPMS are evaluated at π·frequency·p, so they
+            // repeat every 2 / frequency — which is what keeps every seam invisible.
+            if (s.dislocation != 0f || (s.space != null && s.space.Active))
+                p = EscherSpace.ToLattice(s.space, p, ScrewDislocation.TpmsPeriod(s.frequency), time,
+                                          s.dislocationAxis, s.dislocation, s.dislocationCore);
             float v;
             switch (s.shape)
             {

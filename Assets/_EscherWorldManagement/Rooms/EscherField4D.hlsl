@@ -63,7 +63,10 @@ float3 EscherDislocate(float3 p)
     if (ease > 0.0)
     {
         float azimuth = atan2(q.y, q.x);
-        float period = 6.2831853 / max(_EscherField.w, 0.01);
+        // The field is evaluated at pi * frequency * p, so its lattice repeats every 2 / frequency.
+        // (This was 2pi / frequency, pi times too far per circuit, which tore the seam; it now
+        // matches EscherSpace / ScrewDislocation on the CPU.)
+        float period = 2.0 / max(_EscherField.w, 0.01);
         q.z += amount * period * (azimuth / 6.2831853) * ease;
     }
 
@@ -83,9 +86,10 @@ float EscherCross(float3 r)
     return min(max(r.x, r.y), min(max(r.y, r.z), max(r.z, r.x)));
 }
 
-// The raw field on a 4-D point. The periodic family is genuinely four-dimensional: the 4-D gyroid
-// is the cyclic sum sin x cos y + sin y cos z + sin z cos w + sin w cos x, so every 3-D slice is
-// gyroid-like but no two slices are the same geometry. That is what a portal looks through.
+// The raw field on a 4-D point. The periodic family is genuinely four-dimensional: W shifts the
+// phase of the 4-D gyroid's closing term, sin z cos(x + w), so every 3-D slice is gyroid-like but no
+// two slices are the same geometry — and W = 0 is exactly the gyroid. That is what a portal looks
+// through. Must match EscherFields.Raw on the CPU term for term.
 float EscherRaw(float3 p, float w)
 {
     int id = (int)(_EscherField.x + 0.5);
@@ -94,7 +98,7 @@ float EscherRaw(float3 p, float w)
     float qw = w * k;
 
     if (id == ESCHER_SCHWARZP)
-        return cos(q.x) + cos(q.y) + cos(q.z) + cos(qw);
+        return cos(q.x) + cos(q.y) + cos(q.z) + (cos(qw) - 1.0);   // exactly Schwarz P at W = 0
 
     if (id == ESCHER_SCHWARZD)
     {
@@ -109,7 +113,7 @@ float EscherRaw(float3 p, float w)
     {
         float3 cs = cos(q);
         float cw = cos(qw);
-        return 3.0 * (cs.x + cs.y + cs.z + cw) + 4.0 * cs.x * cs.y * cs.z * cw;
+        return 3.0 * (cs.x + cs.y + cs.z + cw) + 4.0 * cs.x * cs.y * cs.z * cw - 3.0;   // Neovius at W = 0
     }
 
     if (id == ESCHER_LIDINOID)
@@ -199,9 +203,8 @@ float EscherRaw(float3 p, float w)
         return length(z) * pow(scale, -5.0) - 0.02;
     }
 
-    // Gyroid, 4-D.
-    float sw = sin(qw), cw = cos(qw);
-    return sin(q.x) * cos(q.y) + sin(q.y) * cos(q.z) + sin(q.z) * cw + sw * cos(q.x);
+    // Gyroid, 4-D: W is a phase on the closing term, so W = 0 is exactly the gyroid.
+    return sin(q.x) * cos(q.y) + sin(q.y) * cos(q.z) + sin(q.z) * cos(q.x + qw);
 }
 
 // Field value on this portal's slice. The slice turn is applied to the 4-D point before

@@ -91,6 +91,7 @@ namespace PsychedelicLab.EscherWorld
         float builtPower, builtBoxScale, builtBarth, builtExtent;
         int builtIterations, builtFolds;
         RoomAxis builtAxis;
+        int builtSpace;
         Vector3 builtOffset;
 
         float builtW, builtWInfluence;
@@ -150,7 +151,8 @@ namespace PsychedelicLab.EscherWorld
             (builtOffset - latticeOffset).sqrMagnitude > 1e-6f ||
             !Mathf.Approximately(builtW, wSlice + field.w) ||
             !Mathf.Approximately(builtWInfluence, field.wInfluence) ||
-            (builtWRotation - field.wRotation).sqrMagnitude > 1e-6f;
+            (builtWRotation - field.wRotation).sqrMagnitude > 1e-6f ||
+            builtSpace != (field.space != null ? field.space.Signature() : 0);
 
         void Snapshot()
         {
@@ -173,6 +175,7 @@ namespace PsychedelicLab.EscherWorld
             builtOffset = latticeOffset;
             builtW = wSlice + field.w;
             builtWRotation = field.wRotation;
+            builtSpace = field.space != null ? field.space.Signature() : 0;
             builtWInfluence = field.wInfluence;
         }
 

@@ -79,6 +79,7 @@ namespace PsychedelicLab.GeometryFX
         int builtIterations, builtFolds;
         float builtDislocation, builtDislocationCore;
         Axis3 builtDislocationAxis;
+        int builtSpace;
         float nextRebuild;
         double elapsed;
 
@@ -120,7 +121,8 @@ namespace PsychedelicLab.GeometryFX
             builtFolds != field.folds ||
             !Mathf.Approximately(builtDislocation, field.dislocation) ||
             builtDislocationAxis != field.dislocationAxis ||
-            !Mathf.Approximately(builtDislocationCore, field.dislocationCore);
+            !Mathf.Approximately(builtDislocationCore, field.dislocationCore) ||
+            builtSpace != (field.space != null ? field.space.Signature() : 0);
 
         void Snapshot()
         {
@@ -133,6 +135,7 @@ namespace PsychedelicLab.GeometryFX
             builtIterations = field.iterations; builtFolds = field.folds;
             builtDislocation = field.dislocation; builtDislocationAxis = field.dislocationAxis;
             builtDislocationCore = field.dislocationCore;
+            builtSpace = field.space != null ? field.space.Signature() : 0;
         }
 
         // ---- build -----------------------------------------------------------
