@@ -7,6 +7,11 @@ namespace PsychedelicLab.GeometryFX
     /// Shared topology and projection for the n-cube swarms. Rotates in n dimensions as a chain of
     /// 2-plane rotations, then collapses to 3-D one dimension at a time.
     ///
+    /// The chain stays deliberately: the left/right quaternion form <see cref="Rotor4"/> uses is
+    /// special to SO(4) (SO(4) ≅ SU(2)×SU(2)/Z₂ has no analogue for n ≥ 5), and these swarms run
+    /// from 4 to 14 dimensions. The 4-D figures (<see cref="Polytope4DSwarm"/>,
+    /// <see cref="Hyperspace4DAxis"/>) use the rotor.
+    ///
     /// DekeractTetraSwarm is deliberately left alone. This is a separate parameterised family, one
     /// component per dimension:
     ///

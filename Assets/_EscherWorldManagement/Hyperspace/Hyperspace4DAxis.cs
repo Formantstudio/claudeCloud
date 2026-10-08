@@ -47,6 +47,23 @@ namespace PsychedelicLab.GeometryFX
         /// <summary>The newest enabled rig. Shapes read this when no explicit axis is assigned.</summary>
         public static Hyperspace4DAxis Current { get; private set; }
 
+        /// <summary>How the six plane angles become one rotation.</summary>
+        public enum RotationModel
+        {
+            /// <summary>
+            /// All six angles at once, as the exponential of one bivector, through
+            /// <see cref="Rotor4"/>'s left/right quaternion pair. No plane order, no gimbal lock;
+            /// constant rates trace a geodesic of SO(4).
+            /// </summary>
+            Bivector,
+            /// <summary>The original chain of six Givens rotations in a fixed order.</summary>
+            SequentialPlanes
+        }
+
+        [Header("Rotation model")]
+        [Tooltip("Bivector applies all six planes simultaneously (true SO(4), order-free). SequentialPlanes is the original fixed-order chain, kept for scenes tuned against it.")]
+        public RotationModel rotationModel = RotationModel.Bivector;
+
         [Header("Rotation planes (degrees)")]
         [Tooltip("XY, XZ, XW, YZ, YW, ZW — in that order. XW, YW and ZW are the ones that tilt into W.")]
         public PlaneAxis[] planes = DefaultPlanes();
@@ -121,6 +138,7 @@ namespace PsychedelicLab.GeometryFX
         static readonly int ActivationId = Shader.PropertyToID("_Hyper4DActivation");
 
         Matrix4x4 rotation = Matrix4x4.identity;
+        Rotor4 rotor = Rotor4.identity;
         // Spiral angle plus the rock, per plane, for this frame.
         readonly float[] effective = new float[6];
         float nextRoll;
@@ -139,6 +157,12 @@ namespace PsychedelicLab.GeometryFX
         public static float SharedActivation => Current ? Current.Activation : 0f;
 
         public Matrix4x4 Rotation => rotation;
+        /// <summary>
+        /// This frame's rotation as a <see cref="Rotor4"/> (left/right quaternions), for geodesic
+        /// blending with <see cref="Rotor4.Slerp"/>. Identity under <see cref="RotationModel.SequentialPlanes"/>;
+        /// use <see cref="Rotation"/> there.
+        /// </summary>
+        public Rotor4 Rotor => rotor;
 
         static PlaneAxis[] DefaultPlanes()
         {
@@ -293,18 +317,30 @@ namespace PsychedelicLab.GeometryFX
                 effective[i] = p.degrees + rocked;
             }
 
-            rotation = Matrix4x4.identity;
-            // Order matters, but any fixed order is a valid parameterisation of SO(4); this one
-            // puts the three 3-D planes first so the W tilts read as the outer motion.
-            Compose(ref rotation, 0, 1, effective[(int)Plane.XY]);
-            Compose(ref rotation, 0, 2, effective[(int)Plane.XZ]);
-            Compose(ref rotation, 1, 2, effective[(int)Plane.YZ]);
             // The three W planes scale with activation: at 0 this is an ordinary 3-D rotation and
             // nothing leaves the hyperplane, which is what makes the layer neutral at rest.
             float act = Activation;
-            Compose(ref rotation, 0, 3, effective[(int)Plane.XW] * act);
-            Compose(ref rotation, 1, 3, effective[(int)Plane.YW] * act);
-            Compose(ref rotation, 2, 3, effective[(int)Plane.ZW] * act);
+            if (rotationModel == RotationModel.Bivector)
+            {
+                float k = Mathf.Deg2Rad;
+                rotor = Rotor4.FromBivector(
+                    effective[(int)Plane.XY] * k, effective[(int)Plane.XZ] * k, effective[(int)Plane.XW] * act * k,
+                    effective[(int)Plane.YZ] * k, effective[(int)Plane.YW] * act * k, effective[(int)Plane.ZW] * act * k);
+                rotation = rotor.ToMatrix();
+            }
+            else
+            {
+                rotation = Matrix4x4.identity;
+                // Order matters, but any fixed order is a valid parameterisation of SO(4); this one
+                // puts the three 3-D planes first so the W tilts read as the outer motion.
+                Compose(ref rotation, 0, 1, effective[(int)Plane.XY]);
+                Compose(ref rotation, 0, 2, effective[(int)Plane.XZ]);
+                Compose(ref rotation, 1, 2, effective[(int)Plane.YZ]);
+                Compose(ref rotation, 0, 3, effective[(int)Plane.XW] * act);
+                Compose(ref rotation, 1, 3, effective[(int)Plane.YW] * act);
+                Compose(ref rotation, 2, 3, effective[(int)Plane.ZW] * act);
+                rotor = Rotor4.identity;
+            }
 
             if (publishToShaders)
             {
@@ -356,6 +392,12 @@ namespace PsychedelicLab.GeometryFX
         {
             float act = Activation;
             if (act <= .001f) return new Vector4(v.x, v.y, v.z, 0f);
+            if (rotationModel == RotationModel.Bivector)
+            {
+                float k = Mathf.Deg2Rad * act;
+                return Rotor4.FromBivector(0f, 0f, effective[(int)Plane.XW] * k,
+                                           0f, effective[(int)Plane.YW] * k, effective[(int)Plane.ZW] * k).Rotate(v);
+            }
             var m = Matrix4x4.identity;
             Compose(ref m, 0, 3, effective[(int)Plane.XW] * act);
             Compose(ref m, 1, 3, effective[(int)Plane.YW] * act);
