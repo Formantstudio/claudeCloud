@@ -34,5 +34,7 @@ namespace PsychedelicLab.GeometryFX.Tests
         [Test] public void AttractorTube() => Check<AttractorEngine>(c => c.trajectoryPoints = 3000);
         [Test] public void AttractorMapDust() => Check<AttractorEngine>(c => { c.system = Attractor.DeJong; c.trajectoryPoints = 2000; c.visiblePoints = 2000; });
         [Test] public void Seifert() => Check<SeifertSurfaceBuilder>(c => c.UseT34());
+        [Test] public void DualContourMenger() => Check<DualContourEngine>(c => { c.resolution = 24; c.UseMenger(); });
+        [Test] public void DualContourGyroidStair() => Check<DualContourEngine>(c => { c.resolution = 24; c.UseGyroidStair(); });
     }
 }

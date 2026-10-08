@@ -31,6 +31,7 @@ namespace PsychedelicLab.GeometryFX
         Mesh mesh;
         bool dirty = true;
         double elapsed;
+        float sinceRebuild;
 
         /// <summary>Fill <paramref name="into"/> (already cleared) for time <paramref name="time"/>.</summary>
         protected abstract void Build(WireMeshBuilder into, float time);
@@ -62,16 +63,30 @@ namespace PsychedelicLab.GeometryFX
         [ContextMenu("Log topology")]
         void LogTopology() => Debug.Log(name + ": " + MeasureTopology());
 
+        /// <summary>
+        /// Minimum seconds between animated rebuilds. 0 = every frame. Extractors whose cost is
+        /// resolution³ override this so an animated field does not rebuild at frame rate.
+        /// </summary>
+        protected virtual float RebuildInterval => 0f;
+
         protected virtual void Update()
         {
             bool running = animate && (Application.isPlaying || animateInEditor);
             if (running) elapsed += Time.deltaTime * timeScale;
-            if (dirty || running) Rebuild();
+            if (dirty) { Rebuild(); return; }
+            if (!running) return;
+            if (RebuildInterval > 0f)
+            {
+                sinceRebuild += Time.deltaTime;
+                if (sinceRebuild < RebuildInterval) return;
+            }
+            Rebuild();
         }
 
         public void Rebuild()
         {
             dirty = false;
+            sinceRebuild = 0f;
             if (!mesh)
             {
                 mesh = new Mesh { name = GetType().Name + " wire", hideFlags = HideFlags.HideAndDontSave };
